@@ -7,11 +7,11 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv("SECRET_KEY")
 
-DEBUG = os.getenv('DEBUG', '').lower() in ['true', 'yes', '1']
+DEBUG = os.getenv("DEBUG", "").lower() in ["true", "yes", "1"]
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -23,7 +23,7 @@ INSTALLED_APPS = [
     "api.apps.ApiConfig",
     "donations.apps.DonationsConfig",
     "contacts.apps.ContactsConfig",
-    "forbiddenwords.apps.ForbiddenwordsConfig"
+    "forbiddenwords.apps.ForbiddenwordsConfig",
 ]
 
 MIDDLEWARE = [
@@ -68,13 +68,13 @@ WSGI_APPLICATION = "donor_base.wsgi.application"
 
 # postgresql
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'django'),
-        'USER': os.getenv('POSTGRES_USER', 'django'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', ''),
-        'PORT': os.getenv('DB_PORT', 5432),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("POSTGRES_DB", "django"),
+        "USER": os.getenv("POSTGRES_USER", "django"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", ""),
+        "PORT": os.getenv("DB_PORT", 5432),
     }
 }
 
@@ -104,14 +104,17 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 3,
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 3,
 }
 
 STATIC_URL = os.getenv("STATIC_URL", "/static/")
 
 # Папка со статикой внутри контейнера backend
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
+
+EMAIL_BACKEND = "django.core.mail.backends.filebased.EmailBackend"
+EMAIL_FILE_PATH = BASE_DIR / "sent_emails"
 
 CELERY_BROKER_URL = os.getenv(
     "CELERY_BROKER_URL", "amqp://myuser:mypassword@localhost:5672/myvhost"
@@ -135,14 +138,14 @@ FIVE_HUNDRED = 500
 THOUSAND = 1000
 THREE_THOUSAND = 3000
 AMOUNT = [
-    (ZERO, '0'),
-    (THREE_HUNDRED, '300'),
-    (FIVE_HUNDRED, '500'),
-    (THOUSAND, '1000'),
-    (THREE_THOUSAND, '3000')
+    (ZERO, "0"),
+    (THREE_HUNDRED, "300"),
+    (FIVE_HUNDRED, "500"),
+    (THOUSAND, "1000"),
+    (THREE_THOUSAND, "3000"),
 ]
 
-EMPTY_VALUE = '-пусто-'
+EMPTY_VALUE = "-пусто-"
 
 MAX_USERNAME_LENGTH = 150
 MAX_EMAIL_LENGTH = 255
