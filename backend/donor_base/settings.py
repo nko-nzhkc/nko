@@ -113,18 +113,7 @@ STATIC_URL = os.getenv("STATIC_URL", "/static/")
 # Папка со статикой внутри контейнера backend
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_FILE_PATH = BASE_DIR / "sent_emails"
-EMAIL_HOST = "smtp.exampleserver.com"
-EMAIL_PORT = 465
-EMAIL_HOST_USER = "from@example.com"
-EMAIL_HOST_PASSWORD = "examplepassword"
-# EMAIL_USE_SSL = True ???
-
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-SERVER_EMAIL = EMAIL_HOST_USER
-EMAIL_ADMIN = EMAIL_HOST_USER
-
+DEFAULT_FROM_EMAIL = "from@example.com"
 
 CELERY_BROKER_URL = os.getenv(
     "CELERY_BROKER_URL", "amqp://myuser:mypassword@localhost:5672/myvhost"

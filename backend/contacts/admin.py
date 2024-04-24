@@ -9,11 +9,6 @@ from .models import Contact
 class ContactAdmin(admin.ModelAdmin):
     """Админ зона контактов."""
 
-    list_display = (
-        "username",
-        "email",
-        "subject",
-        "comment"
-    )
+    list_display = ("username", "email", "subject", "comment")
     empty_value_display = settings.EMPTY_VALUE
     list_filter = ("username",)
