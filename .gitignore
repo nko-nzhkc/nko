@@ -140,6 +140,3 @@ media/
 # PostgreSQL data directory
 /data
 /pg_log
-
-# Migrations
-0*
