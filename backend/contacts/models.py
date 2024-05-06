@@ -13,21 +13,18 @@ class Contact(AbstractUser):
         max_length=settings.MAX_USERNAME_LENGTH,
         unique=True,
         validators=[forbidden_words_validator],
-        verbose_name="Имя контакте"
+        verbose_name="Имя контакте",
     )
     email = models.EmailField(
         max_length=settings.MAX_EMAIL_LENGTH,
         unique=True,
         validators=[forbidden_words_validator],
-        verbose_name="Электронная почта"
+        verbose_name="Электронная почта",
     )
     subject = models.CharField(
-        max_length=settings.MAX_SUBJECT_LENGTH,
-        verbose_name="Тема письма"
+        max_length=settings.MAX_SUBJECT_LENGTH, verbose_name="Тема письма"
     )
-    comment = models.TextField(
-        verbose_name="Комментарий"
-    )
+    comment = models.TextField(verbose_name="Комментарий")
 
     class Meta:
         verbose_name = "Контакт"
@@ -35,7 +32,7 @@ class Contact(AbstractUser):
         constraints = [
             models.UniqueConstraint(
                 fields=["username", "email"],
-                name="Уникальное имя пользователя и электронная почта"
+                name="Уникальное имя пользователя и электронная почта",
             )
         ]
 

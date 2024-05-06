@@ -9,8 +9,6 @@ from .models import ForbiddenWord
 class ForbiddenWordAdmin(admin.ModelAdmin):
     """Админ зона для запрещенных слов."""
 
-    list_display = (
-        "forbidden_word",
-    )
+    list_display = ("forbidden_word",)
     empty_value_display = settings.EMPTY_VALUE
     list_filter = ("forbidden_word",)
