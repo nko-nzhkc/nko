@@ -6,31 +6,30 @@ volumes:
 
 services:
   db:
-    container_name: donor_base_db
-    image: postgres:13
-    restart: always
-    env_file: ../.env
+    image: postgres:13.10
+    env_file: .env
     volumes:
       - pg_data_production:/var/lib/postgresql/data
+    restart: always
 
   backend:
     # image: backend:latest # dummy
-    build: ../backend
-    restart: always
-    env_file: ../.env
+    build: ./backend/
+    env_file: .env
     volumes:
       - static:/app/static/
     depends_on:
       - db
+    restart: on-failure
 
- # here is the place for the nginx config
   nginx:
     # image: nginx:1.25
-    build: ../nginx/
-    env_file: ../.env
+    build: ./nginx/
+    env_file: .env
     ports:
-      - "8000:80"
+      - 8000:80
     volumes:
       - static:/static/
     depends_on:
       - backend
+    restart: always
