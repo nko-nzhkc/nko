@@ -2,19 +2,15 @@ import requests
 
 from dotenv import load_dotenv
 
+from .settings import SET_DEFAULT_CONF
+
 load_dotenv()
 
 
 class Client(object):
 
-    DEFAULT_CONF = {
-        "base_url": "https://api.unisender.com",
-        "lang": "en",
-        'format': 'json',
-        "api_key": None,
-        'platform': None,
-    }
-
+    DEFAULT_CONF = SET_DEFAULT_CONF
+    
     def _get_default_request_data(self):
 
         return {

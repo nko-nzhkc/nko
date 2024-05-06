@@ -10,7 +10,7 @@ load_dotenv()
 
 
 cl = Client(
-    api_key=os.getenv('API_KEY'),
+    api_key=os.getenv('UNISENDER_API_KEY'),
     platform="donor_base",
 )
 method = 'import_contacts'

@@ -6,13 +6,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = "django-insecure-&!$&zdfp_eqc=qsnrfwqyt5aw*pa2%2xdcgjkhlbnmxlc3cmq1"
-# SECRET_KEY = os.getenv('SECRET_KEY')
-DEBUG = True
-# DEBUG = os.getenv('DEBUG', '').lower() in ['true', 'yes', '1']
 
-# ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
-ALLOWED_HOSTS = []
+SECRET_KEY = os.getenv('SECRET_KEY')
+
+DEBUG = os.getenv('DEBUG', '').lower() in ['true', 'yes', '1']
+
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -23,7 +23,7 @@ INSTALLED_APPS = [
     "api.apps.ApiConfig",
     "donations.apps.DonationsConfig",
     "contacts.apps.ContactsConfig",
-    "forbiddenwords.apps.ForbiddenwordsConfig",
+    "forbiddenwords.apps.ForbiddenwordsConfig"
 ]
 
 MIDDLEWARE = [
@@ -59,24 +59,24 @@ TEMPLATES = [
 WSGI_APPLICATION = "donor_base.wsgi.application"
 
 # sqlite3
-DATABASES = {
-     "default": {
-         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
+#     }
+# }
 
 # postgresql
-# DATABASES = {
-    # 'default': {
-        # 'ENGINE': 'django.db.backends.postgresql',
-        # 'NAME': os.getenv('POSTGRES_DB', 'django'),
-        # 'USER': os.getenv('POSTGRES_USER', 'django'),
-        # 'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-        # 'HOST': os.getenv('DB_HOST', ''),
-        # 'PORT': os.getenv('DB_PORT', 5432),
-    # }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB', 'django'),
+        'USER': os.getenv('POSTGRES_USER', 'django'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', ''),
+        'PORT': os.getenv('DB_PORT', 5432),
+    }
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -150,7 +150,7 @@ MAX_SUBJECT_LENGTH = 255
 MAX_FORBIDDEN_WORLD_LENGTH = 100
 
 # unisender
-SET_DEFAULT_CONF = {
+DEFAULT_CONF = {
         "base_url": "https://api.unisender.com",
         "lang": "en",
         'format': 'json',
