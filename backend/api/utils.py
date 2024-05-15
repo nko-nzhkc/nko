@@ -1,4 +1,5 @@
 # Модуль бизнес логики проекта.
+import requests
 from datetime import datetime
 
 from django.conf import settings
@@ -55,6 +56,7 @@ def mixplat_request_handler(request):
 
 
 def get_cloudpayment_data(request):
+    """Формирование данных для сериалайзера CloudpaymentsSerializer."""
     data = {
         "email": request.data.get("receipt_email"),
         "donat": request.data.get("amount"),
@@ -63,3 +65,14 @@ def get_cloudpayment_data(request):
         "currency": request.data.get("currency"),
     }
     return data
+
+
+def check_cloudpayments_connection():
+    """Проверка подключения к api cloudpayments."""
+    url = settings.CLOUDPAYMETS_API_TEST_URL
+    headers = {"Content-Type": "application/json"}
+    auth = (settings.CLOUDPAYMETS_PUBLIC_ID, settings.CLOUDPAYMETS_API_SECRET)
+    response = requests.post(url, headers=headers, auth=auth)
+    if response.status_code == 200:
+        return True
+    return False
