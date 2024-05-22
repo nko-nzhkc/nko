@@ -81,8 +81,9 @@ def contacts_from_crm():
             settings.ENDPOINT,
             # headers=
             # params=
-        ).json()
+        )
         if api_answer.status_code == http.HTTPStatus.OK:
+            api_answer.json()
             for contact in api_answer:
                 if (
                     contact_exists(contact["user_name"], contact["user_email"])
