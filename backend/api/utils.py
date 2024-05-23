@@ -97,7 +97,7 @@ def contacts_from_crm():
                             comment=contact["user_comment"],
                         )
                     )
-                Contact.objects.bulk_create(bulk_list)
+            Contact.objects.bulk_create(bulk_list)
         else:
             print(f"Статус код ответа: {api_answer.status_code}!")
     except json.JSONDecodeError as error:
