@@ -83,8 +83,7 @@ def contacts_from_crm():
             # params=
         )
         if api_answer.status_code == http.HTTPStatus.OK:
-            api_answer.json()
-            for contact in api_answer:
+            for contact in api_answer.json():
                 if (
                     contact_exists(contact["user_name"], contact["user_email"])
                     is False
