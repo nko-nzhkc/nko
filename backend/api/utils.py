@@ -1,10 +1,14 @@
 # Модуль бизнес логики проекта.
 from datetime import datetime
+import http
+import json
 
+import requests
 from django.conf import settings
 from django.utils.timezone import make_aware
 from rest_framework import status
 from rest_framework.response import Response
+from requests.exceptions import RequestException
 
 from contacts.models import Contact
 from mixplat.models import MixPlat
@@ -13,6 +17,11 @@ from mixplat.models import MixPlat
 def string_to_date(value):
     """Метод преобразования строки в дату, установка time-zone."""
     return make_aware(datetime.strptime(value, settings.DATE_FORMAT))
+
+
+def contact_exists(username, email):
+    """Метод проверки наличия контакта в ДБ."""
+    return Contact.objects.filter(username=username, email=email).exists()
 
 
 def mixplat_request_handler(request):
@@ -38,10 +47,9 @@ def mixplat_request_handler(request):
         )
         MixPlat.objects.create(**mixplat_obj_dict)
         if (
-            Contact.objects.filter(
-                username=request.data["user_name"],
-                email=request.data["user_email"],
-            ).exists()
+            contact_exists(
+                request.data["user_name"], request.data["user_email"]
+            )
             is False
         ):
             Contact.objects.create(**contact_obj_dict)
@@ -63,3 +71,41 @@ def get_cloudpayment_data(request):
         "currency": request.data.get("currency"),
     }
     return data
+
+
+def contacts_from_crm():
+    """Метод создания контактов из вне."""
+    bulk_list = list()
+    try:
+        api_answer = requests.get(
+            settings.ENDPOINT,
+            # headers=
+            # params=
+        )
+        if api_answer.status_code == http.HTTPStatus.OK:
+            for contact in api_answer.json():
+                if (
+                    contact_exists(contact["user_name"], contact["user_email"])
+                    is False
+                ):
+                    bulk_list.append(
+                        Contact(
+                            username=contact["user_name"],
+                            email=contact["user_email"],
+                            subject=contact["user_account_id"],
+                            comment=contact["user_comment"],
+                        )
+                    )
+            Contact.objects.bulk_create(bulk_list)
+        else:
+            print(f"Статус код ответа: {api_answer.status_code}!")
+    except json.JSONDecodeError as error:
+        print(f"Ошибка декодирования JSON: {error}")
+    except RequestException as error:
+        print(f"API сервиса недоступен: {error}")
+    except KeyError:
+        print(f"в словаре {contact} нет ключа.")
+
+
+if __name__ == "__main__":
+    contacts_from_crm()
