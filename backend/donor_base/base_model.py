@@ -60,8 +60,7 @@ class BaseModelDonation(models.Model):
         verbose_name="Платежный оператор",
     )
     currency = models.CharField(
-        max_length=settings.MAX_CURRENCY_LENGTH,
-        verbose_name="Валюта платежа"
+        max_length=settings.MAX_CURRENCY_LENGTH, verbose_name="Валюта платежа"
     )
 
     class Meta:

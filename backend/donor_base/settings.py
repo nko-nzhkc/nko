@@ -11,7 +11,8 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 DEBUG = os.getenv("DEBUG", "").lower() in ["true", "yes", "1"]
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+# ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+ALLOWED_HOSTS = ['127.0.0.1']
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -62,24 +63,24 @@ TEMPLATES = [
 WSGI_APPLICATION = "donor_base.wsgi.application"
 
 # sqlite3
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": BASE_DIR / "db.sqlite3",
-#     }
-# }
-
-# postgresql
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "django"),
-        "USER": os.getenv("POSTGRES_USER", "django"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", ""),
-        "PORT": os.getenv("DB_PORT", 5432),
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
+
+# # postgresql
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": os.getenv("POSTGRES_DB", "django"),
+#         "USER": os.getenv("POSTGRES_USER", "django"),
+#         "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
+#         "HOST": os.getenv("DB_HOST", ""),
+#         "PORT": os.getenv("DB_PORT", 5432),
+#     }
+# }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -160,8 +161,8 @@ MAX_CURRENCY_LENGTH = 10
 MAX_PAYMENT_OPERATOR_LENGTH = 250
 
 # TODO Необходимо разместить PUBLIC_ID, API_SECRET в SECRETS
-CLOUDPAYMENTS_PUBLIC_ID = "cloudpayments_public_id"
-CLOUDPAYMENTS_API_SECRET = "cloudpayments_api_secret"
+CLOUDPAYMENTS_PUBLIC_ID = os.getenv("CLOUDPAYMENTS_PUBLIC_ID")
+CLOUDPAYMENTS_API_SECRET = os.getenv("CLOUDPAYMENTS_API_SECRET")
 CLOUDPAYMENTS_API_TEST_URL = "https://api.cloudpayments.ru/test"
 
 MAX_PAYMENT_ID_LENGTH = 100

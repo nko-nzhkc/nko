@@ -60,6 +60,9 @@ class CloudpaymentsSerializer(serializers.ModelSerializer):
             "payment_method",
             "monthly_donat",
             "subscription",
-            "payment_status",
+            "status",
             "currency",
+            "user_account_id",
+            "date_created",
+            "date_processed",
         )

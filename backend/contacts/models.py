@@ -13,7 +13,7 @@ class Contact(AbstractUser):
         max_length=settings.MAX_USERNAME_LENGTH,
         unique=True,
         validators=[forbidden_words_validator],
-        verbose_name="Имя контакте",
+        verbose_name="Имя контакта",
     )
     email = models.EmailField(
         max_length=settings.MAX_EMAIL_LENGTH,

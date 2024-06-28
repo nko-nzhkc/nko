@@ -65,12 +65,14 @@ def get_cloudpayment_data(request):
         model = request.data["Model"][0]
         data = {
             "email": model.get("Email"),
-            "donat": model.get("Amount"),
+            "custom_donat": model.get("Amount"),
             "date_created": model.get("CreatedDateIso"),
             "date_processed": model.get("ConfirmDateIso"),
             "payment_id": model.get("TransactionId"),
             "status": model.get("Status"),
             "payments_operator": model.get("Issuer"),
+            "payment_method": model.get("CardType"),
+            "user_account_id": model.get("TransactionId"),
             "currency": model.get("Currency"),
         }
         return data
