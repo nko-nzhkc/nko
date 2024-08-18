@@ -51,15 +51,10 @@ def mixplat_request_handler(request):
                 subcsription="Active",
             )
         else:
-            if donor_exists(request.data["user_email"]) is False:
-                Donor.objects.create(
-                    email=request.data["user_email"],
-                    subcsription="Inactive",
-                )
-            else:
-                Donor.objects.filter(email=request.data["user_email"]).update(
-                    subcsription="Lost",
-                )
+            Donor.objects.update_or_create(
+                email=request.data["user_email"],
+                subcsription="Inactive",
+            )
 
         return Response(dict(result="ok"), status=status.HTTP_200_OK)
     except KeyError:
