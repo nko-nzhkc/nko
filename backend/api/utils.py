@@ -45,8 +45,22 @@ def mixplat_request_handler(request):
 
         MixPlat.objects.create(**mixplat_obj_dict)
 
-        if donor_exists(request.data["user_email"]) is False:
-            Donor.objects.create(email=request.data["user_email"])
+        if request.data.get("recurrent_id") is not None:
+            Donor.objects.update_or_create(
+                email=request.data["user_email"],
+                subcsription="Active",
+            )
+        else:
+            if donor_exists(request.data["user_email"]) is False:
+                Donor.objects.create(
+                    email=request.data["user_email"],
+                    subcsription="Inactive",
+                )
+            else:
+                Donor.objects.update(
+                    email=request.data["user_email"],
+                    subcsription="Lost",
+                )
 
         return Response(dict(result="ok"), status=status.HTTP_200_OK)
     except KeyError:
