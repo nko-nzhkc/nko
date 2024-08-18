@@ -57,8 +57,7 @@ def mixplat_request_handler(request):
                     subcsription="Inactive",
                 )
             else:
-                Donor.objects.update(
-                    email=request.data["user_email"],
+                Donor.objects.filter(email=request.data["user_email"]).update(
                     subcsription="Lost",
                 )
 
