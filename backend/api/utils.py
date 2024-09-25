@@ -57,7 +57,7 @@ def mixplat_request_handler(request):
     """Метод создания объектов из данных от Mixplat."""
     logger.info(
         "структура request !!!!!!!!!!!!!!!!mixplat!!!!!!!!!!!!!!!!!!!!!!"
-        f"{request.data}"
+        f"{request}"
     )
     try:
         mixplat_obj_dict = dict(
@@ -86,7 +86,7 @@ def mixplat_request_handler(request):
     except KeyError:
         logger.info(
             "Неправильная структура request !!!!!!!!!mixplat!!!!!!!!!!!!!!!"
-            f"{request.data}"
+            f"{request}"
         )
         return Response(
             dict(result="error", error_description="Internal error"),
@@ -118,14 +118,14 @@ def handling_cloudpayment_data(request):
         model = request.data
         data = {
             "email": model.get("Email"),
-            "donat": model.get("Amount"),
+            "donat": int(model.get("Amount")),
             "date_created": model.get("DateTime"),
             "date_processed": model.get("DateTime"),
             "payment_id": model.get("TransactionId"),
             "status": model.get("Status"),
             "payment_operator": "Cloudpayment",
             "payment_method": model.get("CardType"),
-            "user_account_id": model.get("TransactionId"),
+            "user_account_id": int(model.get("TransactionId")),
             "currency": model.get("Currency"),
         }
         subscription = check_donor_subscriptions(data["email"])
