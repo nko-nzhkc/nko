@@ -118,7 +118,7 @@ def handling_cloudpayment_data(request):
         model = request.data
         data = {
             "email": model.get("Email"),
-            "donat": int(model.get("Amount")),
+            "donat": float(model.get("Amount")),
             "date_created": model.get("DateTime"),
             "date_processed": model.get("DateTime"),
             "payment_id": model.get("TransactionId"),
