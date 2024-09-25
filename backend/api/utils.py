@@ -55,6 +55,10 @@ def ad_donor(donor, subscription, update=False):
 
 def mixplat_request_handler(request):
     """Метод создания объектов из данных от Mixplat."""
+    logger.info(
+        "структура request !!!!!!!!!!!!!!!!mixplat!!!!!!!!!!!!!!!!!!!!!!"
+        f"{request}"
+    )
     try:
         mixplat_obj_dict = dict(
             email=request.data["user_email"],
@@ -80,6 +84,10 @@ def mixplat_request_handler(request):
 
         return Response(dict(result="ok"), status=status.HTTP_200_OK)
     except KeyError:
+        logger.info(
+            "Неправильная структура request !!!!!!!!!mixplat!!!!!!!!!!!!!!!"
+            f"{request}"
+        )
         return Response(
             dict(result="error", error_description="Internal error"),
             status=status.HTTP_400_BAD_REQUEST,
