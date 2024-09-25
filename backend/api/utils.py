@@ -130,7 +130,6 @@ def handling_cloudpayment_data(request):
         }
         subscription = check_donor_subscriptions(data["email"])
         create_or_update_donor(data, subscription)
-        logger.info(f"Верная структура {model}")
         return data
     logger.info(f"Неверная структура {request.data}")
     raise ValueError("Неправильная структура request.data")
