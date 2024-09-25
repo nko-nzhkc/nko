@@ -57,7 +57,7 @@ def mixplat_request_handler(request):
     """Метод создания объектов из данных от Mixplat."""
     logger.info(
         "структура request !!!!!!!!!!!!!!!!mixplat!!!!!!!!!!!!!!!!!!!!!!"
-        f"{request}"
+        f"{request.data}"
     )
     try:
         mixplat_obj_dict = dict(
@@ -86,7 +86,7 @@ def mixplat_request_handler(request):
     except KeyError:
         logger.info(
             "Неправильная структура request !!!!!!!!!mixplat!!!!!!!!!!!!!!!"
-            f"{request}"
+            f"{request.data}"
         )
         return Response(
             dict(result="error", error_description="Internal error"),
