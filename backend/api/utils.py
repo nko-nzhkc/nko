@@ -56,7 +56,7 @@ def ad_donor(donor, subscription, update=False):
 def mixplat_request_handler(request):
     """Метод создания объектов из данных от Mixplat."""
     logger.info(
-        "структура request !!!!!!!!!!!!!!!!mixplat!!!!!!!!!!!!!!!!!!!!!!"
+        "структура request !!!!!!!!!!!!!!!!mixplat!!!!!!!!!!!!!!!!!!!!!!\n"
         f"{request.data}"
     )
     try:
@@ -84,10 +84,11 @@ def mixplat_request_handler(request):
         MixPlat.objects.create(**mixplat_obj_dict)
 
         return Response(dict(result="ok"), status=status.HTTP_200_OK)
-    except KeyError:
+    except Exception as error:
         logger.info(
-            "Неправильная структура request !!!!!!!!!mixplat!!!!!!!!!!!!!!!"
-            f"{request.data}"
+            "Неправильная структура request !!!!!!!!!mixplat!!!!!!!!!!!!!!!\n"
+            f"{request.data}\n"
+            f"{error}"
         )
         return Response(
             dict(result="error", error_description="Internal error"),
