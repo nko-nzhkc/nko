@@ -127,7 +127,7 @@ def handling_cloudpayment_data(request):
             "status": model.get("Status"),
             "payment_operator": "Cloudpayment",
             "payment_method": model.get("CardType"),
-            "user_account_id": int(model.get("TransactionId")),
+            "user_account_id": int(model.get("TransactionId")[0]),
             "currency": model.get("Currency"),
         }
         subscription = check_donor_subscriptions(data["email"])
