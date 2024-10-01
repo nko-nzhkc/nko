@@ -114,12 +114,12 @@ jobs:
         docker compose -f docker-compose.production.yml exec backend bash -c "python manage.py migrate" && \
         docker image prune -a -f"
 
-    - name: Run Celery worker
-      run: |
-        ssh ${{ secrets.HOST_USER }}@${{ secrets.HOST }} "cd acquirings && \
-        docker compose -f docker-compose.production.yml exec backend bash -c 'celery -A donor_base worker --loglevel=info -D'"
-
-    - name: Run Celery beat
-      run: |
-        ssh ${{ secrets.HOST_USER }}@${{ secrets.HOST }} "cd acquirings && \
-        docker compose -f docker-compose.production.yml exec backend bash -c 'celery -A donor_base beat --loglevel=info > /dev/null 2>&1 &'"
+#    - name: Run Celery worker
+#      run: |
+#        ssh ${{ secrets.HOST_USER }}@${{ secrets.HOST }} "cd acquirings && \
+#        docker compose -f docker-compose.production.yml exec backend bash -c 'celery -A donor_base worker --loglevel=info -D'"
+#
+#    - name: Run Celery beat
+#      run: |
+#        ssh ${{ secrets.HOST_USER }}@${{ secrets.HOST }} "cd acquirings && \
+#        docker compose -f docker-compose.production.yml exec backend bash -c 'celery -A donor_base beat --loglevel=info > /dev/null 2>&1 &'"
