@@ -31,7 +31,6 @@ INSTALLED_APPS = [
     "forbiddenwords.apps.ForbiddenwordsConfig",
     "cloudpayments.apps.CloudpaymentsConfig",
     "mixplat.apps.MixplatConfig",
-    "axes",
 ]
 
 MIDDLEWARE = [
@@ -43,7 +42,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "axes.middleware.AxesMiddleware",
 ]
 
 AUTH_USER_MODEL = "contacts.Contact"
@@ -258,33 +256,3 @@ GROUPS = {
 BAD_COUNT = 3
 BAD_STATUSES = ["Cancelled", "Declined", "failure"]
 NEY_SUB_STAT = ["Lost", "Inactive"]
-
-# Настройки AXES для безопасности проекта
-AXES_CACHING_BACKEND = "django.core.cache.backends.locmem.LocMemCache"
-AXES_FAILURE_LIMIT = 5
-AXES_TIME_FRAME = 300
-AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
-AXES_MAX_ATTEMPTS = 5
-AXES_TIME_FRAME = 300
-AXES_RESET_ON_SUCCESS = True
-AXES_USE_RATE_LIMITING = True
-AXES_RATE_BUCKETS = {
-    "30m": 100,
-    "1h": 300,
-    "6h": 600,
-    "12h": 900,
-    "1d": 1200,
-}
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "unique-snowflake",
-    }
-}
-AXES_LOGOUT_URL_NAME = "logout"
-AXES_LOGIN_URL_NAME = "login"
-AXES_ADD_HEADERS_TO_CSP = True
-AXES_ENABLE_CSRF = True
-AXES_MUST_CHANGE_PASSWORD = True
-AXES_LOCKOUT_TEMPLATE = "account/locked_out.html"
-AXES_FAILURE_TEMPLATE = "account/failure.html"
