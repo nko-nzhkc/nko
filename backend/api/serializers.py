@@ -1,9 +1,9 @@
 # Модуль сериализаторов API.
 from rest_framework import serializers
 
+from cloudpayments.models import CloudPayment
 from contacts.models import Contact
 from forbiddenwords.models import ForbiddenWord
-from cloudpayments.models import CloudPayment
 from mixplat.models import MixPlat
 
 

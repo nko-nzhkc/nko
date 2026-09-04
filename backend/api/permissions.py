@@ -7,10 +7,10 @@ class IsAdmin(permissions.BasePermission):
 
     message = "Раздел только для Администратора."
 
-    def has_permission(self, request, view):
+    def has_permission(self, request, _view):
         if request.user.is_authenticated:
             return request.user.is_admin or request.user.is_superuser
 
-    def has_object_permission(self, request, view, obj):
+    def has_object_permission(self, request, _view, _obj):
         if request.user.is_authenticated:
             return request.user.is_admin or request.user.is_superuser
