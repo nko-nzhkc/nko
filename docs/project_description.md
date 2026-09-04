@@ -15,14 +15,14 @@ D(Nginx) --> |Проксирует на http://backend:8000/api/...| E
 E(Django)
 E --> |MixPlat| E1("`MixplatViewSet вызывает payment_status.<br>**NB: ModelViewSet**`")
     E1 --> E1a(Payment_status вызывает mixplat_request_handler)
-    E1a --> |Внутри mixplat_request_handler| F
+    E1a --> |Внутри mixplat_request_handler ЛОКАЛЬНО оценивается recurrent_id из request.data| F
 
 E --> |CloudPayment| E2("`CloudPaymentsViewSet вызывает create_cloudpayment.<br>**NB: GenericViewSet**`")
     E2 --> E2a(Сreate_cloudpayment сериализует данные с помощью CloudpaymentsSerializer. В сериализатор передается результат вызова handling_cloudpayment_data)
     E2a --> |Внутри handling_cloudpayment_data| E2b("`check_donor_subscriptions с отправкой POST на CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL (вероятно https://api.cloudpayments.ru/subscriptions/find)`")
     E2b --> F
 
-F("`Определение subscription (Active или Inactive)`")
+F("`Присваивание статуса subscription (Active или Inactive)`")
 F --> G{Вызов create_or_update_donor. Донор существует в базе?}
 
 G --> |Нет| G1
@@ -34,14 +34,14 @@ G --> |Нет| G1
             G1c --> H
 
 G -->|Да| G2
-    G2{"status платежа входит в BAD_STATUSES?"}
+    G2{"status платежа входит в BAD_STATUSES (Cancelled, Declined, failure)?"}
     G2 -->|Да| G2a
         G2a{"subscription из платежа равен Active?"}
         G2a -->|Нет, уже Inactive или Lost| G2c(НЕТ НИКАКОЙ ДАЛЬНЕЙШЕЙ ОБРАБОТКИ)
             G2c --> H
         G2a -->|Да| G2d
-            G2d{"Счетчик отказов достиг лимита?"}
-            G2d -->|Да| G2e(Вызов ad_donor. Изменение статуса донора в БД на Lost, изменение листа донора в Unisender путем отправки POST на IMPORT_UNISENDER)
+            G2d{"Счетчик отказов достигнет лимита, если добавить еще 1 отказ?"}
+            G2d -->|Да| G2e("`Вызов ad_donor. Изменение статуса донора в БД на Lost, изменение листа донора в Unisender путем отправки POST на IMPORT_UNISENDER.<br>**NB:ad_donor обнуляет count_declined**`")
                 G2e --> H
             G2d -->|Нет| G2f(Внутри create_or_update_donor запрос к БД на изменение объекта Donor, отфильтрованного по email, c изменением count_declined на плюс один)
                 G2f --> H
@@ -58,10 +58,9 @@ G -->|Да| G2
             G2k --> H
 
 H("Завершение create_or_update_donor")
-H --> |MixPlat| H1(Добавление объекта MixPLat в БД напрямую)
-    H1 --> |Из mixplat_request_handler|I{KeyError?}
-        I --> |Нет| I1(return Response result=ok, status 200)
-        I --> |Да| I2(return Response result=error, error_description=Internal error, status 400)
+H --> |MixPlat| H1{Добавление объекта MixPLat в БД напрямую. KeyError?}
+    H1 --> |Нет| I(return Response result=ok, status 200)
+    H1 --> |Да| K(return Response result=error, error_description=Internal error, status 400)
 
 H --> |CloudPayment| H2{"CloudpaymentsSerializer.is_valid()?"}
     H2 --> |Да| H2a(CloudpaymentsSerializer.save)
@@ -74,7 +73,7 @@ H --> |CloudPayment| H2{"CloudpaymentsSerializer.is_valid()?"}
 title: Получение списка контактов от Unisender
 ---
 flowchart TD
-A(POST запрос на <br><домен>/api/contacts/start)@{shape: circle} --> B(Вызов send_request)
+A(POST запрос на <br><домен>/api/contacts/start)@{shape: circle} --> B(Вызов send_request c передачей list_id из request.data)
 B --> C("Отправка POST на EXPORT_UNISENDER<br>(вероятно, https://api.unisender.com/ru/api/async/exportContacts)")
 C --> D
 
@@ -82,12 +81,11 @@ D{Статус ответа 200?}
 D -->|Да| D1{В response_data есть error или result}
     D1 -->|Error| D1a(Логирование)
         D1a --> |return отсутствует, возвращает None| E
-    D1 -->|Result| D1b("Логирование + return response.json['result']")
-        D1b --> E
     D1 -->|Нет| D1c(Логирование)
         D1c --> |return отсутствует, возвращает None| E
+    D1 -->|Result| D2
 
-D -->|Нет| D2(Логирование + return response.json)
+D -->|Нет| D2("Логирование + return response.json()")
     D2 --> E
 
 E(return Response с data=результату выполнения send_request, status 200)
@@ -109,11 +107,11 @@ B --> |Нет, POST| B2("`Вызов add_contacts c передачей request.d
             B3c--> B3d
         B3a -->|Да| B3d("Определить путь к файлу как files/data.csv (os.path.join(directory, 'data.csv'))")
             B3d --> B3e(Записать в файл response.content)
-            B3e --> B3f("Открыв свежесозданный файл как csv, читать его построчно и добавлять в лист не существующих доноров (row[0] != 'email' and donor_exists(row[0]) is False)")
+            B3e --> B3f("Открыв свежесозданный файл как csv, читать его построчно и добавлять в лист не существующих в БД доноров (row[0] != 'email' and donor_exists(row[0]) is False). NB: При создании донора subscription=settings.GROUPS[row[1]]")
             B3f --> B3g(Создать доноров по полученному листу)
             B3g --> B3h(Попытаться удалить directory с файлом)
             B3h --> B3i{OSError}
-                B3i -->|Да| B3i1(raise)
+                B3i -->|Да| B3i1("`raise строки. **NB:будет падать с TypeError**`")
                 B3i -->|Нет| B3i2(Логирование)
                     B3i2 --> B3j(return строку с числом добавленных контактов)
                     B3j --> C
@@ -131,13 +129,13 @@ flowchart TD
 А("`Запрос на <br><домен>/api/forbiddenwords<br>**NB: выставлен пермишн IsAdmin, который проверяет is_superuser ИЛИ is_admin, но is_admin не существует в модели**`")@{shape: circle}-->B{GET}
 B -->|Да| B1(Получение списка запрещенных слов)
 B -->|Нет, POST| B2("`Добавление нового запрещенного слова через сериализатор ForbiddenwordSerializer.<br>**NB: ModelSerializer**`")
-C("`forbidden_words_validator, для которого нужны эти запрещенные слова, используется при создании Contact на полях username и email, при создании Donor на поле email и при создании записи MixPlat или CloudPayment на поле email (унаследовано от BaseModelDonation)<br>**NB: validators срабатывают только при вызове full_clean()<br>https://docs.djangoproject.com/en/5.2/ref/models/instances/#validating-objects**`")
+C("`forbidden_words_validator, для которого нужны эти запрещенные слова, используется при создании Contact на полях username и email, при создании Donor на поле email и при создании записи MixPlat или CloudPayment на поле email (унаследовано от BaseModelDonation)<br>**NB: validators срабатывают только при вызове full_clean(), который в коде нигде не вызывается при создании в обход форм/сериализаторов<br>https://docs.djangoproject.com/en/5.2/ref/models/instances/#validating-objects**`")
 ```
 ```mermaid
 ---
 title: Получение списка всех платежей
 ---
 flowchart TD
-A(GET запрос на <br><домен>/api/payments)@{shape: circle}--> B(Объединение QuerySet MixPlat и CloudPayment с помощью .union с сортировкой по pub_date по возрастанию)
+A(GET запрос на <br><домен>/api/payments)@{shape: circle}--> B(Объединение QuerySet MixPlat и CloudPayment с помощью .union с сортировкой по pub_date по убыванию)
 B --> C("return JsonResponse({'payments_list': список values() объединенного })QuerySet")
 ```
