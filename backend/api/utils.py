@@ -1,13 +1,15 @@
-# Модуль бизнес логики проекта.
+"""Модуль бизнес логики проекта."""
+
 import base64
 import csv
 import http
 import logging
-import requests
 import os
 import shutil
 from datetime import datetime
 
+import requests
+import zapros
 from django.conf import settings
 from django.db.models import F
 from django.utils.timezone import make_aware
@@ -46,11 +48,16 @@ def ad_donor(donor, subscription, update=False):
         "data[0][0]": donor,
         "data[0][1]": settings.GROUPS[subscription],
     }
-    response = requests.post(url, data=data, timeout=30)
+    with zapros.Client() as client:
+        response = client.post(
+            url,
+            form={key: str(value) for key, value in data.items()},
+            context={"timeouts": {"connect": 30.0, "read": 30.0}},
+        )
 
-    if response.status_code != status.HTTP_200_OK:
-        logger.info(f"Ошибка при запросе: {response.status_code}")
-        logger.info(response.json())
+    if response.status != status.HTTP_200_OK:
+        logger.info(f"Ошибка при запросе: {response.status}")
+        logger.info(response.json)
 
 
 def mixplat_request_handler(request):
@@ -200,7 +207,7 @@ def create_or_update_donor(data, subscription):
                     )
                     logger.info(
                         f"У Донора {data['email']} обновлен статус "
-                        f"{settings.SUBSCRIPTION_CHOICES[0][0]}"
+                        f"на {settings.SUBSCRIPTION_CHOICES[0][0]}"
                     )
                 else:
                     Donor.objects.filter(email=data["email"]).update(
@@ -227,24 +234,25 @@ def check_cloudpayments_connection():
 
 
 def send_payment_email(email, list_id):
-    """
-    Запрос на получение шаблона от unisender,
-    отправка письма Донору по шаблону.
-    """
-
+    """Получение шаблона Unisender и отправка письма донору."""
     data = {
         "format": "json",
         "api_key": settings.UNISENDER_API_KEY,
         "template_id": settings.TEMPLATE_ID,
     }
 
-    response = requests.post(settings.URL_GET_TEMP, data=data, timeout=30)
+    with zapros.Client() as client:
+        response = client.post(
+            settings.URL_GET_TEMP,
+            form={key: str(value) for key, value in data.items()},
+            context={"timeouts": {"connect": 30.0, "read": 30.0}},
+        )
 
-    if response.status_code != status.HTTP_200_OK:
-        logger.info(f"Ошибка при запросе шаблона: {response.status_code}")
+    if response.status != status.HTTP_200_OK:
+        logger.info(f"Ошибка при запросе шаблона: {response.status}")
         logger.info(f"Ответ сервера: {response.text}")
 
-    res = response.json()["result"]
+    res = response.json["result"]
 
     data = {
         "format": "json",
@@ -257,13 +265,18 @@ def send_payment_email(email, list_id):
         "list_id": list_id,
     }
 
-    response = requests.post(settings.URL_SEND_EMAIL, data=data, timeout=30)
+    with zapros.Client() as client:
+        response = client.post(
+            settings.URL_SEND_EMAIL,
+            form={key: str(value) for key, value in data.items()},
+            context={"timeouts": {"connect": 30.0, "read": 30.0}},
+        )
 
-    if response.status_code != status.HTTP_200_OK:
-        logger.info(f"Ошибка при отправке сообщения: {response.status_code}")
+    if response.status != status.HTTP_200_OK:
+        logger.info(f"Ошибка при отправке сообщения: {response.status}")
         logger.info(f"Ответ сервера: {response.text}")
     else:
-        response_data = response.json()
+        response_data = response.json
         if "error" in response_data:
             logger.info("Ошибка при отправке сообщения:")
             logger.info(f"Код ошибки: {response_data['code']}")
@@ -285,12 +298,16 @@ def send_request(list_id):
         "field_names[1]": "email_list_ids",
         "list_id": list_id,
     }
-    response = requests.post(url, data=data)
-    if response.status_code != status.HTTP_200_OK:
-        logger.info(f"Ошибка при запросе: {response.status_code}")
-        return response.json()
+    with zapros.Client() as client:
+        response = client.post(
+            url,
+            form={key: str(value) for key, value in data.items()},
+        )
+    if response.status != status.HTTP_200_OK:
+        logger.info(f"Ошибка при запросе: {response.status}")
+        return response.json
     else:
-        response_data = response.json()
+        response_data = response.json
         if "error" in response_data:
             logger.info("Ошибка:")
             logger.info(f"Код ошибки: {response_data['code']}")

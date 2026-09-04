@@ -1,5 +1,6 @@
-import requests
+"""Клиент для работы с API Unisender."""
 
+import zapros
 from django.conf import settings
 from dotenv import load_dotenv
 
@@ -7,6 +8,8 @@ load_dotenv()
 
 
 class Client(object):
+    """Клиент для низкоуровневого доступа к Unisender API."""
+
     def _get_default_request_data(self):
         return {
             "api_key": self._config["api_key"],
@@ -40,6 +43,7 @@ class Client(object):
         )
 
     def __init__(self, api_key, platform, **kwargs):
+        """Инициализирует клиент Unisender."""
         self._config = settings.DEFAULT_CONF
         self._config["api_key"] = api_key
         self._config["platform"] = platform
@@ -48,5 +52,9 @@ class Client(object):
     def _api_request(self, method, data):
         url = self._get_request_url(method)
         data = self._build_request_data(data, extra_key=None)
-        response = requests.post(url, data)
+        with zapros.Client() as client:
+            response = client.post(
+                url,
+                form={key: str(value) for key, value in data.items()},
+            )
         return response
