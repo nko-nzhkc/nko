@@ -30,7 +30,7 @@ G --> |Нет| G1
     G1 -->|Inactive| G1a("`Вызов ad_donor. Создание Donor со статусом Inactive и добавление донора в Unisender путем отправки POST на IMPORT_UNISENDER (вероятно https://api.unisender.com/ru/api/importContacts)`")
         G1a --> H("Завершение create_or_update_donor")
     G1 -->|Active| G1b(Вызов ad_donor. Создание Donor со статусом Active и добавление донора в Unisender путем отправки POST на IMPORT_UNISENDER)
-        G1b --> G1c(Вызов send_payment_email. Запрос шаблона от Unisender и отправка письма донору по шаблону)
+        G1b --> G1c(Вызов send_payment_email. Запрос шаблона от Unisender и отправка письма донору по шаблону. Диаграмма обработки ниже.)
             G1c --> H
 
 G -->|Да| G2
@@ -49,8 +49,8 @@ G -->|Да| G2
         G2b{"subscription из платежа равен Active?"}
         G2b -->|Да| G2g
             G2g{"subscription в базе данных в Lost или Inactive?"}
-            G2g -->|Да| G2h(Вызов ad_donor. Изменение статуса донора в БД на Active, изменение листа донора в Unisender путем отправки POST на IMPORT_UNISENDER)
-                G2h --> G2i(Вызов send_payment_email. Запрос шаблона от Unisender и отправка письма донору по шаблону)
+            G2g -->|Да| G2h("`Вызов ad_donor. Изменение статуса донора в БД на Active, изменение листа донора в Unisender путем отправки POST на IMPORT_UNISENDER<br>**NB:ad_donor обнуляет count_declined**`")
+                G2h --> G2i(Вызов send_payment_email. Запрос шаблона от Unisender и отправка письма донору по шаблону. Диаграмма обработки ниже.)
                     G2i --> H
             G2g -->|Нет| G2j(Внутри create_or_update_donor запрос к БД на изменение объекта Donor, отфильтрованного по email, cо сбросом count_declined)
                 G2j --> H
@@ -67,7 +67,37 @@ H --> |CloudPayment| H2{"CloudpaymentsSerializer.is_valid()?"}
         H2a --> J(return Response code=0, status 200)
     H2 --> |Нет| H2b(return Response serializer.errors, status 400)
 ```
+```mermaid
+---
+title: Отправка email донору через Unisender (развернутая работа send_payment_email)
+---
+flowchart TD
+A("`Вызов send_payment_email(email, list_id) из create_or_update_donor`")@{shape: circle} --> B("`Подготовка данных для запроса шаблона:<br>data = {format: 'json', api_key: UNISENDER_API_KEY, template_id: TEMPLATE_ID}`")
+B --> C("`POST на URL_GET_TEMP<br>(вероятно, https://api.unisender.com/ru/api/getTemplate)<br>**Timeout выставлен на 30 секунд**`")
+C --> D
 
+D{"Response статус 200?"}
+D -->|Да| D1("`Извлечение response.json()['result']<br>Получаем subject и body из шаблона`")
+    D1 --> E
+
+D -->|Нет| D2(Логирование и продолжение выполнения без return/raise!)
+    D2 --> D3("`Далее вызывается response.json()['result'] → **KeyError**, т.к. запрос от 400/500 не содержит 'result'`")
+
+E("`Подготовка данных для отправки письма:<br>data = {format: 'json', api_key: UNISENDER_API_KEY, email (пользователя, передан при вызове функции), sender_email: DEFAULT_FROM_EMAIL, sender_name: 'crisis-center', subject, body, list_id}`")
+E --> F("`POST на URL_SEND_EMAIL<br>**Timeout выставлен на 30 секунд**`")
+
+F --> G{Response статус 200?}
+G -->|Да| G1{В response_data есть error или result?}
+    G1 -->|Result| G1a(Логирование)
+        G1a --> G1b(Письмо отправлено. Функция возвращает None)
+    G1 -->|Нет| G1e(Логирование)
+        G1e --> G1f(Статус доставки неизвестен. Функция возвращает None)
+    G1 -->|Error| G1c(Логирование)
+        G1c --> G3
+
+G -->|Нет| G2(Логирование)
+    G2 --> G3("`Письмо НЕ отправлено. Функция возвращает None<br>**NB: донор уже сохранён как Active выше по стеку**`")
+```
 ```mermaid
 ---
 title: Получение списка контактов от Unisender
@@ -78,7 +108,7 @@ B --> C("Отправка POST на EXPORT_UNISENDER<br>(вероятно, https
 C --> D
 
 D{Статус ответа 200?}
-D -->|Да| D1{В response_data есть error или result}
+D -->|Да| D1{В response_data есть error или result?}
     D1 -->|Error| D1a(Логирование)
         D1a --> |return отсутствует, возвращает None| E
     D1 -->|Нет| D1c(Логирование)
@@ -136,6 +166,42 @@ C("`forbidden_words_validator, для которого нужны эти зап�
 title: Получение списка всех платежей
 ---
 flowchart TD
-A(GET запрос на <br><домен>/api/payments)@{shape: circle}--> B(Объединение QuerySet MixPlat и CloudPayment с помощью .union с сортировкой по pub_date по убыванию)
+A(GET запрос на <br><домен>/api/payments)@{shape: circle}--> B("`Объединение QuerySet MixPlat и CloudPayment с помощью .union с сортировкой по pub_date по убыванию.<br>**NB:pub_date auto_now_add - время записи в *нашу* БД**`")
 B --> C("return JsonResponse({'payments_list': список values() объединенного })QuerySet")
 ```
+
+# Дополнения и замечания
+
+## Доступы и безопасность
+`REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']` не настороен в принципе, поэтому идет откат к внутренним дефолтам DRF: SessionAuthentication и BasicAuthentication. Аутентификация идет относительно модели Contact (задано в AUTH_USER_MODEL = 'contacts.Contact'), что не применимо для вебхуков (**вебхуки не проверяются вообще!**).  
+`REST_FRAMEWORK['DEFAULT_PERMISSION_CLASSES']` также не настроен, поэтому идет откат к внутренним дефолтам DRF: AllowAny
+
+| Эндпоинт | Метод | Тип view | Permission класс | Требование | **Проблема безопасности** |
+|----------|--------------|-------------|------------------|------------|---------------------------|
+| `/api/contacts/` | `GET` | `ModelViewSet` | **Отсутствует** |  | **Публичный доступ к списку всех контактов** |
+| `/api/contacts/` | `POST` | `ModelViewSet` | **Отсутствует** |  | **Любой может создавать контакты (пользователей)** |
+| `/api/contacts/{id}/` | `GET/PUT/PATCH/DELETE` | `ModelViewSet` | **Отсутствует** |  | **Полный CRUD доступ к любым контактам** |
+| `/api/contacts/start/` | `POST` | `@action` | **Отсутствует** |  | **Любой может запустить экспорт из Unisender** |
+| `/api/contacts/get_contacts/` | `GET/POST` | `@action` | **Отсутствует** |  | **Любой может загрузить доноров в БД из внешнего файла** |
+| `/api/mixplat/` | `GET` | `ModelViewSet` | **Отсутствует** |  | **Публичный доступ к списку платежей MixPlat** |
+| `/api/mixplat/` | `POST` | `ModelViewSet` | **Отсутствует** |  | **Любой может создавать записи о платежах** |
+| `/api/mixplat/{id}/` | `GET/PUT/PATCH/DELETE` | `ModelViewSet` | **Отсутствует** |  | **Полный CRUD доступ к платежам** |
+| `/api/mixplat/payment_status/` | `POST` | `@action` | **Отсутствует** |  | **Webhook должен быть защищен (IP whitelist, signature)** |
+| `/api/cloudpayments/` | `GET` | `GenericViewSet` | **Отсутствует** |  | **Только `create_cloudpayment` action реализован, но базовые CRUD методы не зарегистрированы** |
+| `/api/cloudpayments/create_cloudpayment/` | `POST` | `@action` | **Отсутствует** |  | **Webhook должен быть защищен (IP whitelist, signature)** |
+| `/api/payments/` | `GET` | `View` | **Отсутствует** |  | **Публичный доступ к объединенному списку всех платежей** |
+| `/api/forbiddenwords/` | `GET` | `ListCreateMixin` | `IsAdmin` | `is_superuser` ИЛИ `is_admin` | **СЛОМАН: поле `is_admin` не существует в модели `Contact`** |
+| `/api/forbiddenwords/` | `POST` | `ListCreateMixin` | `IsAdmin` | `is_superuser` ИЛИ `is_admin` | **СЛОМАН: поле `is_admin` не существует в модели `Contact`** |
+
+## Админка
+`/admin/` - CRUD для Donor, Contact, MixPlat, CloudPayment, ForbiddenWord. Оформлен, работает.
+
+## Celery и RabbitMQ
+Были запланированы, но не используются и не настроены. В docker-compose.production есть настройки для RabbitMQ, но нет ничего для Celery
+
+## Обработка ошибок
+За редким исключением (добавление в базу данных MixPlat или Cloudpayments, там настроено) ошибки только логируются, ответ остается 200.
+
+## Массовая выгрузка контактов через management команду
+`management/commands/unisender_integration.py`
+Нужно полностью переделать или дропнуть, сейчас работает некорретно на всех этапах.
