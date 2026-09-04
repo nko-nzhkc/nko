@@ -65,7 +65,7 @@ H --> |MixPlat| H1{Добавление объекта MixPLat в БД напр�
 H --> |CloudPayment| H2{"CloudpaymentsSerializer.is_valid()?"}
     H2 --> |Да| H2a(CloudpaymentsSerializer.save)
         H2a --> J(return Response code=0, status 200)
-    H2 --> |Нет| H2b(return Response serializer.errors, status 400)
+    H2 --> |Нет| H2b("`return Response serializer.errors, status 400<br>**NB: Донор в базе данных уже создан или изменен, а этот его платеж - нет**`")
 ```
 ```mermaid
 ---
@@ -172,11 +172,14 @@ B --> C("return JsonResponse({'payments_list': список values() объед�
 
 # Дополнения и замечания
 
+## Обработка ошибок
+За редким исключением (добавление в базу данных MixPlat или CloudPayment, там настроено) ошибки только логируются, ответ остается 200.
+
 ## Доступы и безопасность
 `REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES']` не настороен в принципе, поэтому идет откат к внутренним дефолтам DRF: SessionAuthentication и BasicAuthentication. Аутентификация идет относительно модели Contact (задано в AUTH_USER_MODEL = 'contacts.Contact'), что не применимо для вебхуков (**вебхуки не проверяются вообще!**).  
 `REST_FRAMEWORK['DEFAULT_PERMISSION_CLASSES']` также не настроен, поэтому идет откат к внутренним дефолтам DRF: AllowAny
 
-| Эндпоинт | Метод | Тип view | Permission класс | Требование | **Проблема безопасности** |
+| Эндпоинт | Метод | Тип view | Permission класс | Требование | **Проблема** |
 |----------|--------------|-------------|------------------|------------|---------------------------|
 | `/api/contacts/` | `GET` | `ModelViewSet` | **Отсутствует** |  | **Публичный доступ к списку всех контактов** |
 | `/api/contacts/` | `POST` | `ModelViewSet` | **Отсутствует** |  | **Любой может создавать контакты (пользователей)** |
@@ -184,24 +187,34 @@ B --> C("return JsonResponse({'payments_list': список values() объед�
 | `/api/contacts/start/` | `POST` | `@action` | **Отсутствует** |  | **Любой может запустить экспорт из Unisender** |
 | `/api/contacts/get_contacts/` | `GET/POST` | `@action` | **Отсутствует** |  | **Любой может загрузить доноров в БД из внешнего файла** |
 | `/api/mixplat/` | `GET` | `ModelViewSet` | **Отсутствует** |  | **Публичный доступ к списку платежей MixPlat** |
-| `/api/mixplat/` | `POST` | `ModelViewSet` | **Отсутствует** |  | **Любой может создавать записи о платежах** |
-| `/api/mixplat/{id}/` | `GET/PUT/PATCH/DELETE` | `ModelViewSet` | **Отсутствует** |  | **Полный CRUD доступ к платежам** |
+| `/api/mixplat/` | `POST` | `ModelViewSet` | **Отсутствует** |  | **Любой может создавать записи о платежах MixPlat** |
+| `/api/mixplat/{id}/` | `GET/PUT/PATCH/DELETE` | `ModelViewSet` | **Отсутствует** |  | **Полный CRUD доступ к платежам MixPlat** |
 | `/api/mixplat/payment_status/` | `POST` | `@action` | **Отсутствует** |  | **Webhook должен быть защищен (IP whitelist, signature)** |
-| `/api/cloudpayments/` | `GET` | `GenericViewSet` | **Отсутствует** |  | **Только `create_cloudpayment` action реализован, но базовые CRUD методы не зарегистрированы** |
+| `/api/cloudpayments/` | `GET` | `GenericViewSet` | **Отсутствует** |  | **Только `create_cloudpayment` action реализован, но базовые CRUD методы не зарегистрированы (вроде бы и не нужны)** |
 | `/api/cloudpayments/create_cloudpayment/` | `POST` | `@action` | **Отсутствует** |  | **Webhook должен быть защищен (IP whitelist, signature)** |
 | `/api/payments/` | `GET` | `View` | **Отсутствует** |  | **Публичный доступ к объединенному списку всех платежей** |
 | `/api/forbiddenwords/` | `GET` | `ListCreateMixin` | `IsAdmin` | `is_superuser` ИЛИ `is_admin` | **СЛОМАН: поле `is_admin` не существует в модели `Contact`** |
 | `/api/forbiddenwords/` | `POST` | `ListCreateMixin` | `IsAdmin` | `is_superuser` ИЛИ `is_admin` | **СЛОМАН: поле `is_admin` не существует в модели `Contact`** |
 
 ## Админка
-`/admin/` - CRUD для Donor, Contact, MixPlat, CloudPayment, ForbiddenWord. Оформлен, работает.
+`/admin/` - CRUD для Donor, Contact, MixPlat, CloudPayment, ForbiddenWord. Оформлен, работает.  
+**NB:** Contact является кастомной моделью пользователя и используется для входа в админку в том числе (смешение сущностей).
+
+## Поля в моделях
+**BaseModelDonation** от которой унаследованы **MixPlat** и **CloudPayment** содержит monthly_donat и subscription, которые нигде в коде не заполняются. 
 
 ## Celery и RabbitMQ
-Были запланированы, но не используются и не настроены. В docker-compose.production есть настройки для RabbitMQ, но нет ничего для Celery
-
-## Обработка ошибок
-За редким исключением (добавление в базу данных MixPlat или Cloudpayments, там настроено) ошибки только логируются, ответ остается 200.
+Были запланированы, но не используются и настроены частично (celery.py существует и настроен, но tasks.py заглушка, CELERY_BEAT_SCHEDULE закомментирован в settings.py). В docker-compose.production есть настройки для RabbitMQ, но нет ничего для Celery => RabbitMQ простаивает. 
 
 ## Массовая выгрузка контактов через management команду
 `management/commands/unisender_integration.py`
 Нужно полностью переделать или дропнуть, сейчас работает некорретно на всех этапах.
+
+## Сигналы
+Текущая реализация отправки писем работает внутри create_or_update_donor, а не через сигналы. В api/signals.py весь код закомментирован.
+
+## Nginx
+Nginx слушает на хосте порт 8000, а не стандартный 80/443.
+
+## NOTIFY_URL хардкодный в settings
+Явно надо менять.
