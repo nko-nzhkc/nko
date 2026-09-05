@@ -7,4 +7,4 @@ class MixplatConfig(AppConfig):
 
     default_auto_field = "django.db.models.BigAutoField"
     name = "mixplat"
-    verbose_name = "Платежи Mixplat"
+    verbose_name = "Платежы Mixplat"
