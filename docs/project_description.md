@@ -167,5 +167,5 @@ title: Получение списка всех платежей
 ---
 flowchart TD
 A(GET запрос на <br><домен>/api/payments)@{shape: circle}--> B("`Объединение QuerySet MixPlat и CloudPayment с помощью .union с сортировкой по pub_date по убыванию.<br>**NB:pub_date auto_now_add - время записи в *нашу* БД**`")
-B --> C("return JsonResponse({'payments_list': список values() объединенного })QuerySet")
+B --> C("return JsonRespons c 'payments_list': список values() объединенного QuerySet")
 ```
