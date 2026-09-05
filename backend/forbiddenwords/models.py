@@ -7,7 +7,7 @@ class ForbiddenWord(models.Model):
     """Модель запрещенных слов."""
 
     forbidden_word = models.CharField(
-        max_length=settings.MAX_FORBIDDEN_WORLD_LENGTH,
+        max_length=settings.MAX_FORBIDDEN_WORD_LENGTH,
         unique=True,
         verbose_name="Запрещенное слово",
     )
