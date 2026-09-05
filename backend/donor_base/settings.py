@@ -3,9 +3,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# from celery.schedules import crontab
-# from datetime import timedelta
-
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -65,14 +62,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "donor_base.wsgi.application"
-
-# sqlite3
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": BASE_DIR / "db.sqlite3",
-#     }
-# }
 
 # postgresql
 DATABASES = {
@@ -144,16 +133,6 @@ STATIC_URL = os.getenv("STATIC_URL", "/static/")
 # Папка со статикой внутри контейнера backend
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
-# Для локального запуска запустить контейнер Docker командой
-# sudo docker run -d --name rabbitmq
-# -p 5672:5672 -p 15672:15672
-# -e RABBITMQ_DEFAULT_USER=user
-# -e RABBITMQ_DEFAULT_PASS=password
-# rabbitmq:3-management
-# CELERY_BROKER_URL = os.getenv(
-#     "CELERY_BROKER_URL", "amqp://user:password@localhost:5672//"
-# )
-
 # Для работы на сервере
 CELERY_BROKER_URL = os.getenv(
     "CELERY_BROKER_URL", "amqp://user:password@rabbitmq:5672//"
@@ -168,17 +147,7 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 
 CELERY_BEAT_SCHEDULE = {
-    # Планируем отправку доноров, например ежедневно в 3 ночи.
-    # 'run-every-day-at-midnight': {
-    #     'task': 'api.tasks.send_users_to_unisender',
-    #     'schedule': crontab(hour=3, minute=0),
-    # },
-    # Периодическая такса для проверки,
-    # будет писать в файл celery.log раз в 10 секунд
-    # "run-every-10-seconds": {
-    #     "task": "api.tasks.send_users_to_unisender",
-    #     "schedule": timedelta(seconds=10),
-    # },
+
 }
 
 # Константы проекта
@@ -191,14 +160,6 @@ FIVE_HUNDRED = 500
 THOUSAND = 1000
 THREE_THOUSAND = 3000
 
-# AMOUNT = [
-#     (ZERO, "0"),
-#     (THREE_HUNDRED, "300"),
-#     (FIVE_HUNDRED, "500"),
-#     (THOUSAND, "1000"),
-#     (THREE_THOUSAND, "3000"),
-# ]
-
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 EMPTY_VALUE = "-пусто-"
@@ -210,7 +171,6 @@ MAX_FORBIDDEN_WORLD_LENGTH = 100
 MAX_CURRENCY_LENGTH = 10
 MAX_PAYMENT_OPERATOR_LENGTH = 250
 
-# TODO Необходимо разместить PUBLIC_ID, API_SECRET в SECRETS
 CLOUDPAYMENTS_PUBLIC_ID = os.getenv("CLOUDPAYMENTS_PUBLIC_ID")
 CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL = os.getenv(
     "CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL"
