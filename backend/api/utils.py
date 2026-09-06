@@ -100,8 +100,8 @@ def check_donor_subscriptions(email):
 
 
 def handling_cloudpayment_data(request):
-    """Формирование данных для сериалайзера CloudpaymentsSerializer."""
-    # Предлполагаем, что request.data содержит json-объект,
+    """Формирование данных для сериализатора CloudpaymentsSerializer."""
+    # Предполагаем, что request.data содержит json-объект,
     # т.е. ответ сервиса Cloudpayments при запросе на создании платежа.
     if isinstance(request.data, dict) and "Model" in request.data:
         model = request.data["Model"][0]
@@ -162,7 +162,7 @@ def create_or_update_donor(data, subscription):
         if data["status"] in settings.BAD_STATUSES:
             # Если в базе статус активен
             if donor.subscription == settings.SUBSCRIPTION_CHOICES[0][0]:
-                # если у донора 3й откланённый платёж
+                # если у донора 3й отклонённый платёж
                 if donor.count_declined + 1 == settings.BAD_COUNT:
                     # Обновляем его статус на Lost
                     ad_donor(
@@ -183,7 +183,7 @@ def create_or_update_donor(data, subscription):
             # если активная подписка
             if subscription == settings.SUBSCRIPTION_CHOICES[0][0]:
                 # если старый статус "Lost", "Inactive"
-                if donor.subscription in settings.NEY_SUB_STAT:
+                if donor.subscription in settings.NEW_SUB_STAT:
                     # Обновляем его статус на "Active"
                     ad_donor(
                         data["email"],
@@ -309,8 +309,8 @@ def add_contacts(file_url):
         except OSError as e:
             raise f"Error: {e.filename, e.strerror}"
 
-        logger.info(f"Добавленно {len(bulk_list)} контактов.")
-        return f"Добавленно {len(bulk_list)} контактов."
+        logger.info(f"Добавлено {len(bulk_list)} контактов.")
+        return f"Добавлено {len(bulk_list)} контактов."
     logger.info(
         f"Файл по ссылке не получен, код ответа {response.status}"
     )
