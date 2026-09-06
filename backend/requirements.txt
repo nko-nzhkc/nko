@@ -3,7 +3,8 @@ celery==5.3.6
 Django==4.2
 django-cors-headers==3.13.0
 djangorestframework==3.14.0
-psycopg2-binary==2.9.3
+psycopg[binary]>=3.1.8,<4
 python-dotenv==1.0.1
 requests==2.31.0
+zapros==0.17.0
 whitenoise==6.6.0
