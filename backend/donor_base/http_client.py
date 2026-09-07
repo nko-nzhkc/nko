@@ -1,19 +1,12 @@
 """Общий HTTP-клиент проекта."""
 
-import atexit
-
-import zapros
+from donor_base import di
 
 HTTP_TIMEOUT = 30.0
 
-client = zapros.Client(
-    handler=zapros.RedirectMiddleware(zapros.StdNetworkHandler())
-)
-atexit.register(client.close)
 
-
-def _prepare_form_data(data):
-    """Подготавливает данные для отправки формы."""
+def _stringify_form_fields(data):
+    """Преобразует данные в строковые поля формы."""
     return {
         str(key): str(value)
         for key, value in data.items()
@@ -22,16 +15,16 @@ def _prepare_form_data(data):
 
 
 def request(method, url, **kwargs):
-    """Выполнить запрос общим клиентом и проверить HTTP-статус."""
+    """Выполняет HTTP-запрос и проверяет его статус."""
     kwargs.setdefault(
         "context",
         {"timeouts": {"connect": HTTP_TIMEOUT, "read": HTTP_TIMEOUT}},
     )
-    response = client.request(method, url, **kwargs)
+    response = di.get_client().request(method, url, **kwargs)
     response.raise_for_status()
     return response
 
 
 def post_form(url, data):
-    """Отправить application/x-www-form-urlencoded."""
-    return request("POST", url, form=_prepare_form_data(data))
+    """Отправляет данные как application/x-www-form-urlencoded."""
+    return request("POST", url, form=_stringify_form_fields(data))

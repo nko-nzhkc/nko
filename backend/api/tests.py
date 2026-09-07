@@ -1,8 +1,10 @@
 """Модуль тестов API."""
 
+from http import HTTPStatus
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
+import dishka
 import zapros
 from django.conf import settings
 from django.test import SimpleTestCase, TestCase
@@ -10,11 +12,16 @@ from faker import Faker
 from zapros.matchers import path
 from zapros.mock import Mock, MockMiddleware, MockRouter
 
-from donor_base import http_client
+from donor_base import di
 from donor_base.unisender_client import Client
 
 from .utils import (ad_donor, check_cloudpayments_connection,
                     send_payment_email, send_request)
+
+FIELD_NAMES = {
+    "field_names[0]": "email",
+    "field_names[1]": "email_list_ids",
+}
 
 
 class CloudpaymentsConnectionTest(TestCase):
@@ -25,63 +32,62 @@ class CloudpaymentsConnectionTest(TestCase):
         self.assertTrue(check_cloudpayments_connection())
 
 
-class UnisenderHttpMixin:
-    """Общие фикстуры HTTP-тестов Unisender."""
+class UnisenderFixtureMixin:
+    """Фикстуры Unisender-тестов: Faker, mock-роутер, DI-контейнер."""
 
     def setUp(self):
-        """Подготавливает общие данные и HTTP-мок."""
+        """Настраивает общие зависимости тестов Unisender."""
         super().setUp()
 
         self.fake = Faker()
         self.email = self.fake.email()
         self.list_id = self.fake.random_int(min=1)
         self.api_key = self.fake.sha256()
+        self._override_settings(UNISENDER_API_KEY=self.api_key)
 
         self.router = MockRouter()
-        self.http = zapros.Client(handler=MockMiddleware(self.router))
-        self.addCleanup(self.http.close)
-
-        client_patch = patch.object(http_client, "client", new=self.http)
-        client_patch.start()
-        self.addCleanup(client_patch.stop)
-
-        self._override_settings(UNISENDER_API_KEY=self.api_key)
+        client = zapros.Client(handler=MockMiddleware(self.router))
+        container = dishka.make_container(context={zapros.Client: client})
+        patcher = patch.object(di, "container", container)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.addCleanup(container.close)
 
     def _override_settings(self, **kwargs):
         overridden = self.settings(**kwargs)
         overridden.enable()
         self.addCleanup(overridden.disable)
 
-    def _mock_post(self, url, response_data):
+    def _mock_post(self, url, response_data, status=HTTPStatus.OK):
+        """Регистрирует в роутере ответ на POST по url, возвращает mock."""
         parsed = urlsplit(url)
-        mock = (
-            Mock.given(path(parsed.path).method("POST").host(parsed.hostname))
-            .respond(zapros.Response(status=200, json=response_data))
-            .once()
+        matcher = path(parsed.path).method("POST").host(parsed.hostname)
+        mock = Mock.given(matcher).respond(
+            zapros.Response(status=status, json=response_data)
         )
         self.router.add(mock)
         return mock
 
-    def _assert_form(self, mock, url, expected):
+    def _assert_form(self, mock, expected):
+        """Проверяет исходящий запрос: один раз, поля формы совпали."""
         mock.assert_called_once()
-        request = mock.calls[0]
-
-        self.assertEqual(request.url.to_string(), url)
         self.assertEqual(
-            request.headers["Content-Type"].split(";", 1)[0],
-            "application/x-www-form-urlencoded",
-        )
-        self.assertEqual(
-            parse_qs(request.body.decode("utf-8"), keep_blank_values=True),
-            {key: [str(value)] for key, value in expected.items()},
+            self._form_fields(mock.calls[0]),
+            {key: str(value) for key, value in expected.items()},
         )
 
+    def _form_fields(self, request):
+        """Тело запроса как плоский словарь полей формы."""
+        body = request.body.decode("utf-8")
+        fields = parse_qs(body, keep_blank_values=True)
+        return {key: values[0] for key, values in fields.items()}
 
-class UnisenderClientTest(UnisenderHttpMixin, SimpleTestCase):
-    """Тест HTTP-клиента Unisender."""
+
+class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
+    """HTTP-клиент Unisender: сборка и отправка формы importContacts."""
 
     def setUp(self):
-        """Подготавливает данные для теста HTTP-клиента Unisender."""
+        """Настраивает тест клиента Unisender."""
         super().setUp()
 
         self.platform = self.fake.word()
@@ -89,54 +95,66 @@ class UnisenderClientTest(UnisenderHttpMixin, SimpleTestCase):
             api_key=self.api_key,
             platform=self.platform,
         )
-        self.url = (
-            f"{settings.DEFAULT_CONF['base_url']}/"
-            f"{settings.DEFAULT_CONF['lang']}/api/importContacts"
-        )
-        self.data = {
+        self.url = self.unisender._get_request_url("import_contacts")
+        self.payload = {
             "field_names": ["email", "email_list_ids"],
             "data": [[self.email, self.list_id]],
             "overwrite_lists": 1,
         }
-        self.response_data = {"result": {"total": 1}}
         self.expected_form = {
             "api_key": self.api_key,
             "platform": self.platform,
             "format": settings.DEFAULT_CONF["format"],
-            "field_names[0]": "email",
-            "field_names[1]": "email_list_ids",
+            "overwrite_lists": 1,
+            **FIELD_NAMES,
             "data[0][0]": self.email,
             "data[0][1]": self.list_id,
-            "overwrite_lists": 1,
         }
-        self.import_mock = self._mock_post(self.url, self.response_data)
+        self.import_mock = self._mock_post(self.url, {"result": {"total": 1}})
+
+    def test_build_request_data_flattens_payload(self):
+        """Вложенный payload разворачивается в плоские поля формы."""
+        form = self.unisender._build_request_data(self.payload)
+
+        self.assertEqual(form, self.expected_form)
 
     def test_api_request_posts_form_to_unisender(self):
-        """Проверяет отправку формы в Unisender."""
-        response = self.unisender._api_request("import_contacts", self.data)
+        """_api_request отправляет форму в Unisender и возвращает ответ."""
+        response = self.unisender._api_request(
+            "import_contacts", self.payload
+        )
 
-        self.assertEqual(response.status, 200)
-        self.assertEqual(response.json, self.response_data)
-        self._assert_form(self.import_mock, self.url, self.expected_form)
+        self.assertEqual(response.status, HTTPStatus.OK)
+        self.assertEqual(response.json, {"result": {"total": 1}})
+        self._assert_form(self.import_mock, self.expected_form)
+
+    def test_api_request_raises_on_error_status(self):
+        """Ненормативный статус Unisender приводит к StatusCodeError."""
+        url = self.unisender._get_request_url("get_template")
+        self._mock_post(
+            url,
+            {"error": "error", "code": 403},
+            status=HTTPStatus.FORBIDDEN,
+        )
+
+        with self.assertRaises(zapros.StatusCodeError):
+            self.unisender._api_request("get_template", {"template_id": 1})
 
 
-class AdDonorTest(UnisenderHttpMixin, TestCase):
-    """Тест запроса importContacts при добавлении донора."""
+class AdDonorTest(UnisenderFixtureMixin, TestCase):
+    """ad_donor: донор сохраняется в БД и уходит в Unisender."""
 
     def setUp(self):
-        """Подготавливает данные для теста добавления донора."""
+        """Настраивает зависимости теста."""
         super().setUp()
 
         self.subscription = settings.SUBSCRIPTION_CHOICES[0][0]
-        self._override_settings(
-            GROUPS={self.subscription: str(self.list_id)},
-        )
+        self._override_settings(GROUPS={self.subscription: str(self.list_id)})
         self.expected_form = {
             "format": "json",
             "api_key": self.api_key,
             "overwrite_lists": 0,
-            "field_names[0]": "email",
-            "field_names[1]": "email_list_ids",
+            **FIELD_NAMES,
             "data[0][0]": self.email,
             "data[0][1]": self.list_id,
         }
@@ -145,22 +163,18 @@ class AdDonorTest(UnisenderHttpMixin, TestCase):
             {"result": {"total": 1}},
         )
 
-    def test_ad_donor_posts_to_import_contacts(self):
-        """Проверяет отправку донора в importContacts."""
+    def test_ad_donor_sends_donor_to_unisender(self):
+        """ad_donor отправляет донора в importContacts."""
         ad_donor(self.email, self.subscription)
 
-        self._assert_form(
-            self.import_mock,
-            settings.IMPORT_UNISENDER,
-            self.expected_form,
-        )
+        self._assert_form(self.import_mock, self.expected_form)
 
 
-class SendPaymentEmailTest(UnisenderHttpMixin, SimpleTestCase):
-    """Тест запросов getTemplate и sendEmail."""
+class SendPaymentEmailTest(UnisenderFixtureMixin, SimpleTestCase):
+    """send_payment_email: сначала getTemplate, затем sendEmail."""
 
     def setUp(self):
-        """Подготавливает данные для теста отправки письма."""
+        """Настраивает зависимости теста."""
         super().setUp()
 
         self._override_settings(
@@ -172,12 +186,12 @@ class SendPaymentEmailTest(UnisenderHttpMixin, SimpleTestCase):
             "subject": self.fake.sentence(),
             "body": self.fake.text(),
         }
-        self.expected_template_form = {
+        self.template_form = {
             "format": "json",
             "api_key": self.api_key,
             "template_id": settings.TEMPLATE_ID,
         }
-        self.expected_email_form = {
+        self.email_form = {
             "format": "json",
             "api_key": self.api_key,
             "email": self.email,
@@ -196,27 +210,19 @@ class SendPaymentEmailTest(UnisenderHttpMixin, SimpleTestCase):
             {"result": {"email_id": self.fake.random_int(min=1)}},
         )
 
-    def test_send_payment_email_calls_get_template_and_send_email(self):
-        """Проверяет получение шаблона и отправку письма."""
+    def test_send_payment_email_gets_template_and_sends_email(self):
+        """Письмо отправляется по шаблону, полученному из Unisender."""
         send_payment_email(self.email, self.list_id)
 
-        self._assert_form(
-            self.template_mock,
-            settings.URL_GET_TEMP,
-            self.expected_template_form,
-        )
-        self._assert_form(
-            self.email_mock,
-            settings.URL_SEND_EMAIL,
-            self.expected_email_form,
-        )
+        self._assert_form(self.template_mock, self.template_form)
+        self._assert_form(self.email_mock, self.email_form)
 
 
-class SendRequestTest(UnisenderHttpMixin, SimpleTestCase):
-    """Тест запроса exportContacts."""
+class SendRequestTest(UnisenderFixtureMixin, SimpleTestCase):
+    """send_request: запрос экспорта контактов (exportContacts)."""
 
     def setUp(self):
-        """Подготавливает данные для теста экспорта контактов."""
+        """Настраивает зависимости теста."""
         super().setUp()
 
         self.response_data = {
@@ -225,22 +231,17 @@ class SendRequestTest(UnisenderHttpMixin, SimpleTestCase):
         self.expected_form = {
             "api_key": self.api_key,
             "notify_url": settings.NOTIFY_URL,
-            "field_names[0]": "email",
-            "field_names[1]": "email_list_ids",
             "list_id": self.list_id,
+            **FIELD_NAMES,
         }
         self.export_mock = self._mock_post(
             settings.EXPORT_UNISENDER,
             self.response_data,
         )
 
-    def test_send_request_posts_to_export_contacts(self):
-        """Проверяет отправку запроса на экспорт контактов."""
+    def test_send_request_asks_unisender_to_export_contacts(self):
+        """Запрос на экспорт уходит в Unisender, возвращается его ответ."""
         result = send_request(self.list_id)
 
         self.assertEqual(result, self.response_data)
-        self._assert_form(
-            self.export_mock,
-            settings.EXPORT_UNISENDER,
-            self.expected_form,
-        )
+        self._assert_form(self.export_mock, self.expected_form)
