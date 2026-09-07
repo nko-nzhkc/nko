@@ -1,9 +1,9 @@
-# from django.test import TestCase
+# from django.test import SimpleTestCase
 
 # from .utils import check_cloudpayments_connection
 
 
-# class CloudpaymentsConnectionTest(TestCase):
+# class CloudpaymentsConnectionTest(SimpleTestCase):
 #     """Тест-кейс проверки подключения к api cloudpayments."""
 
 #     def test_connection(self):
