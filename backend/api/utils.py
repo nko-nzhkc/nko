@@ -327,7 +327,8 @@ def add_contacts(file_url):
                     bulk_list.append(
                         Donor(
                             email=row[0],
-                            subscription=Subscriptions.ACTIVE.capitalized
+                            subscription=Subscriptions
+                            .get_capitalized_by_group_id(row[1])
                         ),
                     )
             Donor.objects.bulk_create(bulk_list)

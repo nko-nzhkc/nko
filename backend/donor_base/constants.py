@@ -31,7 +31,7 @@ class Subscriptions(Enum):
     Формат:
     name = (value, capitalized, group_id)
 
-    velue:       русская расшифровка статуса
+    value:       русская расшифровка статуса
     capitalized: name в формате записи capitilized
     group_id:    ид группы.
     """
@@ -48,7 +48,16 @@ class Subscriptions(Enum):
         """
 
         obj = object.__new__(cls)
-        obj.value = value
-        obj.value = capitalized
+        obj._value_ = value
+        obj.capitalized = capitalized
         obj.group_id = group_id
         return obj
+
+    @classmethod
+    def get_capitalized_by_group_id(cls, group_id):
+        """Возврат capitalized-значения по соответствующему group_id."""
+        try:
+            # Для поиска используем вшитый в энум словарь с хэшами
+            return cls._value2member_map_[group_id].capitalized
+        except KeyError:
+            raise ValueError(f"Не удалось найти значение по группе {group_id}")
