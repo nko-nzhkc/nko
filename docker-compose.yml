@@ -1,11 +1,9 @@
-version: '3.8'
-
 volumes:
   pg_data:
 
 services:
   db:
-    image: postgres:13.10
+    image: postgres:16
     env_file: .env
     volumes:
       - pg_data:/var/lib/postgresql/data
