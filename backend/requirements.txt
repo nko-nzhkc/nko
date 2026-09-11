@@ -6,4 +6,6 @@ djangorestframework==3.14.0
 psycopg2-binary==2.9.3
 python-dotenv==1.0.1
 requests==2.31.0
+zapros==0.17.0
 whitenoise==6.6.0
+dishka==1.10.1
