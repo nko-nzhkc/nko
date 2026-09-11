@@ -1,9 +1,9 @@
 # Модуль сериализаторов API.
 from rest_framework import serializers
 
+from cloudpayments.models import CloudPayment
 from contacts.models import Contact
 from forbiddenwords.models import ForbiddenWord
-from cloudpayments.models import CloudPayment
 from mixplat.models import MixPlat
 
 
@@ -46,7 +46,7 @@ class ForbiddenwordSerializer(serializers.ModelSerializer):
 
 class CloudpaymentsSerializer(serializers.ModelSerializer):
     """
-    Сериалайзер для модели CloudPayment.
+    Сериализатор для модели CloudPayment.
     """
 
     class Meta:

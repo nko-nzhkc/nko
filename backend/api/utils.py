@@ -109,8 +109,8 @@ def check_donor_subscriptions(email):
 
 
 def handling_cloudpayment_data(request):
-    """Формирование данных для сериалайзера CloudpaymentsSerializer."""
-    # Предлполагаем, что request.data содержит json-объект,
+    """Формирование данных для сериализатора CloudpaymentsSerializer."""
+    # Предполагаем, что request.data содержит json-объект,
     # т.е. ответ сервиса Cloudpayments при запросе на создании платежа.
     if isinstance(request.data, dict) and "Model" in request.data:
         model = request.data["Model"][0]
@@ -338,8 +338,8 @@ def add_contacts(file_url):
         except OSError as e:
             raise f"Error: {e.filename, e.strerror}"
 
-        logger.info(f"Добавленно {len(bulk_list)} контактов.")
-        return f"Добавленно {len(bulk_list)} контактов."
+        logger.info(f"Добавлено {len(bulk_list)} контактов.")
+        return f"Добавлено {len(bulk_list)} контактов."
     logger.info(
         f"Файл по ссылке не получен, код ответа {response.status_code}"
     )
