@@ -5,24 +5,29 @@ from django.db import models
 
 from api.validators import forbidden_words_validator
 
+from donor_base.constants import (
+    ZERO, MAX_USERNAME_LENGTH, MAX_EMAIL_LENGTH,
+    MAX_SUBJECT_LENGTH, Subscriptions
+)
+
 
 class Contact(AbstractUser):
     """Модель контактов."""
 
     username = models.CharField(
-        max_length=settings.MAX_USERNAME_LENGTH,
+        max_length=MAX_USERNAME_LENGTH,
         unique=True,
         validators=[forbidden_words_validator],
         verbose_name="Имя контакта",
     )
     email = models.EmailField(
-        max_length=settings.MAX_EMAIL_LENGTH,
+        max_length=MAX_EMAIL_LENGTH,
         unique=True,
         validators=[forbidden_words_validator],
         verbose_name="Электронная почта",
     )
     subject = models.CharField(
-        max_length=settings.MAX_SUBJECT_LENGTH, verbose_name="Тема письма"
+        max_length=MAX_SUBJECT_LENGTH, verbose_name="Тема письма"
     )
     comment = models.TextField(verbose_name="Комментарий")
 
@@ -44,17 +49,17 @@ class Donor(models.Model):
     """Модель контактов доноров."""
 
     email = models.EmailField(
-        max_length=settings.MAX_EMAIL_LENGTH,
+        max_length=MAX_EMAIL_LENGTH,
         unique=True,
         validators=[forbidden_words_validator],
         verbose_name="Электронная почта донора",
     )
     subscription = models.TextField(
-        choices=settings.SUBSCRIPTION_CHOICES,
+        choices=[(status.name, status.value) for status in Subscriptions],
         verbose_name="Статус подписки у донора",
     )
     count_declined = models.PositiveSmallIntegerField(
-        default=settings.ZERO,
+        default=ZERO,
         verbose_name="Счётчик неудачных платежей",
     )
 

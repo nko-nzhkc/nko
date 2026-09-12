@@ -16,13 +16,18 @@ from rest_framework.response import Response
 
 from contacts.models import Donor
 from mixplat.models import MixPlat
+from donor_base.constants import (
+    BAD_COUNT, BAD_STATUSES,
+    DATE_FORMAT, NEY_SUB_STAT,
+    Subscriptions
+)
 
 logger = logging.getLogger(__name__)
 
 
 def string_to_date(value):
     """Метод преобразования строки в дату, установка time-zone."""
-    return make_aware(datetime.strptime(value, settings.DATE_FORMAT))
+    return make_aware(datetime.strptime(value, DATE_FORMAT))
 
 
 def donor_exists(email):
@@ -44,7 +49,7 @@ def ad_donor(donor, subscription, update=False):
         "field_names[0]": "email",
         "field_names[1]": "email_list_ids",
         "data[0][0]": donor,
-        "data[0][1]": settings.GROUPS[subscription],
+        "data[0][1]": Subscriptions[subscription].group_id,
     }
     response = requests.post(url, data=data, timeout=30)
 
@@ -71,9 +76,9 @@ def mixplat_request_handler(request):
         )
 
         if request.data.get("recurrent_id"):
-            subscription = settings.SUBSCRIPTION_CHOICES[0][0]
+            subscription = Subscriptions.ACTIVE.capitalized
         else:
-            subscription = settings.SUBSCRIPTION_CHOICES[1][0]
+            subscription = Subscriptions.INACTIVE.capitalized
 
         create_or_update_donor(mixplat_obj_dict, subscription)
         MixPlat.objects.create(**mixplat_obj_dict)
@@ -97,9 +102,10 @@ def check_donor_subscriptions(email):
     headers = {"Authorization": f"Basic {basic_encoded}"}
     body = {"accountId": f"{email}"}
     response = requests.post(url, headers=headers, json=body)
-    if response.json()["Model"]:
-        return settings.SUBSCRIPTION_CHOICES[0][0]
-    return settings.SUBSCRIPTION_CHOICES[1][0]
+    return (
+        Subscriptions.ACTIVE.capitalized if response.json()["Model"]
+        else Subscriptions.INACTIVE.capitalized
+    )
 
 
 def handling_cloudpayment_data(request):
@@ -132,50 +138,50 @@ def create_or_update_donor(data, subscription):
     # Если донора нет в базе:
     if not donor_exists(data["email"]):
         # Если подписка неактивна:
-        if subscription == settings.SUBSCRIPTION_CHOICES[1][0]:
+        if subscription == Subscriptions.INACTIVE.capitalized:
             # Сохраняем как Inactive
             ad_donor(
                 data["email"],
-                settings.SUBSCRIPTION_CHOICES[1][0],
+                Subscriptions.INACTIVE.capitalized,
             )
             logger.info(
                 f"Создан Донор {data['email']} "
-                f"{settings.SUBSCRIPTION_CHOICES[1][0]}"
+                f"{Subscriptions.INACTIVE.capitalized}"
             )
         # Если подписка активна:
-        elif subscription == settings.SUBSCRIPTION_CHOICES[0][0]:
+        elif subscription == Subscriptions.ACTIVE.capitalized:
             # Сохраняем как "Active"
             ad_donor(
                 data["email"],
-                settings.SUBSCRIPTION_CHOICES[0][0],
+                Subscriptions.ACTIVE.capitalized,
             )
             # Отправляем донору письмо
             send_payment_email(
                 data["email"],
-                settings.GROUPS[settings.SUBSCRIPTION_CHOICES[0][0]],
+                Subscriptions.ACTIVE.group_id,
             )
             logger.info(
                 f"Создан Донор {data['email']} "
-                f"{settings.SUBSCRIPTION_CHOICES[0][0]}"
+                f"{Subscriptions.ACTIVE.capitalized}"
             )
     # Если донор есть в базе смотрим статус платежа
     else:
         donor = Donor.objects.get(email=data["email"])
         # Если платеж неуспешный
-        if data["status"] in settings.BAD_STATUSES:
+        if data["status"] in BAD_STATUSES:
             # Если в базе статус активен
-            if donor.subscription == settings.SUBSCRIPTION_CHOICES[0][0]:
+            if donor.subscription == Subscriptions.ACTIVE.capitalized:
                 # если у донора 3й отклонённый платёж
-                if donor.count_declined + 1 == settings.BAD_COUNT:
+                if donor.count_declined + 1 == BAD_COUNT:
                     # Обновляем его статус на Lost
                     ad_donor(
                         data["email"],
-                        settings.SUBSCRIPTION_CHOICES[2][0],
+                        Subscriptions.LOST.capitalized,
                         "update",
                     )
                     logger.info(
                         f"У Донора {data['email']} обновлен статус "
-                        f"на {settings.SUBSCRIPTION_CHOICES[2][0]}"
+                        f"на {Subscriptions.LOST.capitalized}"
                     )
                 else:
                     Donor.objects.filter(email=data["email"]).update(
@@ -184,23 +190,23 @@ def create_or_update_donor(data, subscription):
         # Если платеж успешный, обновляем запись
         else:
             # если активная подписка
-            if subscription == settings.SUBSCRIPTION_CHOICES[0][0]:
+            if subscription == Subscriptions.ACTIVE.capitalized:
                 # если старый статус "Lost", "Inactive"
-                if donor.subscription in settings.NEW_SUB_STAT:
+                if donor.subscription in NEY_SUB_STAT:
                     # Обновляем его статус на "Active"
                     ad_donor(
                         data["email"],
-                        settings.SUBSCRIPTION_CHOICES[0][0],
+                        Subscriptions.ACTIVE.capitalized,
                         "update",
                     )
                     # Отправляем донору письмо
                     send_payment_email(
                         data["email"],
-                        settings.GROUPS[settings.SUBSCRIPTION_CHOICES[0][0]],
+                        Subscriptions.ACTIVE.group_id,
                     )
                     logger.info(
                         f"У Донора {data['email']} обновлен статус "
-                        f"{settings.SUBSCRIPTION_CHOICES[0][0]}"
+                        f"{Subscriptions.ACTIVE.capitalized}"
                     )
                 else:
                     Donor.objects.filter(email=data["email"]).update(
@@ -221,9 +227,7 @@ def check_cloudpayments_connection():
         settings.CLOUDPAYMENTS_API_SECRET,
     )
     response = requests.post(url, headers=headers, auth=auth)
-    if response.status_code == http.HTTPStatus.OK:
-        return True
-    return False
+    return response.status_code == http.HTTPStatus.OK
 
 
 def send_payment_email(email, list_id):
@@ -322,7 +326,9 @@ def add_contacts(file_url):
                 if row[0] != "email" and donor_exists(row[0]) is False:
                     bulk_list.append(
                         Donor(
-                            email=row[0], subscription=settings.GROUPS[row[1]]
+                            email=row[0],
+                            subscription=Subscriptions
+                            .get_capitalized_by_group_id(row[1])
                         ),
                     )
             Donor.objects.bulk_create(bulk_list)
