@@ -25,7 +25,7 @@ BAD_STATUSES = ["Cancelled", "Declined", "failure"]
 NEY_SUB_STAT = ["Lost", "Inactive"]
 
 
-class Subscriptions(Enum):
+class SubscriptionStatuses(Enum):
     """Класс статусов подписок.
 
     Формат:
