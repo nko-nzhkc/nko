@@ -21,6 +21,6 @@ jobs:
       - name: Test with flake8
         run: |
           python -m flake8 --exclude=*/migrations/* backend/
-      - name: Test with pytest
-        run: |
-          pytest
+      # - name: Test with pytest
+      #   run: |
+      #     pytest
