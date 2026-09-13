@@ -30,6 +30,10 @@ jobs:
         working-directory: ./backend
         run: |
           poetry run flake8 --exclude=*/migrations/* .
+      
+      # - name: Test with pytest
+      #   run: |
+      #     poetry run pytest
 
   build_backend_and_push_to_docker_hub:
     name: Push backend Docker image to DockerHub
