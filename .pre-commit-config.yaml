@@ -8,12 +8,8 @@ repos:
    -  id: check-yaml
    -  id: no-commit-to-branch
       args: ['--branch', 'main',]
--  repo: https://github.com/pre-commit/mirrors-autopep8
-   rev: 'v2.0.4'
-   hooks:
-   -  id: autopep8
 -  repo: https://github.com/PyCQA/flake8
-   rev: 7.0.0
+   rev: 7.3.0
    hooks:
    -  id: flake8
 - repo: https://github.com/astral-sh/ruff-pre-commit
