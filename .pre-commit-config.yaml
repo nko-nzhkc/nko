@@ -1,12 +1,11 @@
 default_language_version:
-  python: python 3.10
+  python: python 3.13.15
 default_stages: [pre-commit, pre-push]
 repos:
 -  repo: https://github.com/pre-commit/pre-commit-hooks
    rev: v4.5.0
    hooks:
    -  id: check-yaml
-   -  id: requirements-txt-fixer
    -  id: no-commit-to-branch
       args: ['--branch', 'main',]
 -  repo: https://github.com/pre-commit/mirrors-autopep8

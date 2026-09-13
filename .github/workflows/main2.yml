@@ -12,18 +12,26 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.13.15"
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
+
       - name: Install dependencies
+        working-directory: ./backend
         run: |
-          python -m pip install --upgrade pip
-          pip install flake8==6.0.0
-          pip install -r ./backend/requirements.txt
+          poetry install
+
       - name: Test with flake8
+        working-directory: ./backend
         run: |
-          python -m flake8 --exclude=*/migrations/* backend/
+          poetry run flake8 --exclude=*/migrations/* .
 
   deploy:
     runs-on: ubuntu-latest
@@ -67,6 +75,7 @@ jobs:
         echo REQUEST_URL=${{ secrets.REQUEST_URL }} >> .env && \
         echo TEMPLATE_ID=${{ secrets.TEMPLATE_ID }} >> .env && \
         cd backend && \
-        python3 manage.py makemigrations && \
-        python3 manage.py migrate && \
-        gunicorn --bind 0.0.0.0:8000 donor_base.wsgi --reload"
+        poetry install --without dev && \
+        poetry run python manage.py makemigrations && \
+        poetry run python manage.py migrate && \
+        poetry run gunicorn --bind 0.0.0.0:8000 donor_base.wsgi --reload"
