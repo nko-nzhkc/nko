@@ -2,11 +2,11 @@
 
 import base64
 import csv
-import http
 import logging
 import os
 import shutil
 from datetime import datetime
+from http import HTTPMethod, HTTPStatus
 
 import zapros
 from django.conf import settings
@@ -20,6 +20,10 @@ from donor_base import http_client
 from mixplat.models import MixPlat
 
 logger = logging.getLogger(__name__)
+
+_CLOUDPAYMENTS_BAD_KEYS_STATUSES = frozenset(
+    {HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN}
+)
 
 
 def string_to_date(value):
@@ -210,7 +214,7 @@ def create_or_update_donor(data, subscription):
 
 
 def check_cloudpayments_connection():
-    """Проверка подключения к api cloudpayments."""
+    """Проверяет подключение к API CloudPayments."""
     url = settings.CLOUDPAYMENTS_API_TEST_URL
     headers = {"Content-Type": "application/json"}
     auth = (
@@ -218,10 +222,29 @@ def check_cloudpayments_connection():
         settings.CLOUDPAYMENTS_API_SECRET,
     )
     try:
-        response = http_client.request("POST", url, headers=headers, auth=auth)
-    except zapros.StatusCodeError:
+        http_client.request(HTTPMethod.POST, url, headers=headers, auth=auth)
+    except zapros.StatusCodeError as error:
+        if error.response.status not in _CLOUDPAYMENTS_BAD_KEYS_STATUSES:
+            raise
+        logger.info(
+            f"Cloudpayments отклонил запрос, статус: "
+            f"{error.response.status}"
+        )
         return False
-    return response.status == http.HTTPStatus.OK
+    return True
+
+
+def _extract_unisender_result(response_data, error_label="Ошибка:"):
+    """Извлекает result из ответа Unisender."""
+    if "error" in response_data:
+        logger.info(error_label)
+        logger.info(f"Код ошибки: {response_data['code']}")
+        logger.info(f"Сообщение об ошибке: {response_data['error']}")
+        return None
+    if "result" in response_data:
+        return response_data["result"]
+    logger.info(f"Неизвестный ответ от сервера: {response_data}")
+    return None
 
 
 def send_payment_email(email, list_id):
@@ -232,29 +255,28 @@ def send_payment_email(email, list_id):
         "template_id": settings.TEMPLATE_ID,
     }
     response = http_client.post_form(settings.URL_GET_TEMP, data)
-    res = response.json["result"]
-
+    template = _extract_unisender_result(
+        response.json, "Ошибка при запросе шаблона:"
+    )
+    if template is None:
+        return
     data = {
         "format": "json",
         "api_key": settings.UNISENDER_API_KEY,
         "email": email,
         "sender_email": settings.DEFAULT_FROM_EMAIL,
         "sender_name": settings.UNISENDER_SENDER_NAME,
-        "subject": res["subject"],
-        "body": res["body"],
+        "subject": template["subject"],
+        "body": template["body"],
         "list_id": list_id,
     }
     response = http_client.post_form(settings.URL_SEND_EMAIL, data)
-    response_data = response.json
-    if "error" in response_data:
-        logger.info("Ошибка при отправке сообщения:")
-        logger.info(f"Код ошибки: {response_data['code']}")
-        logger.info(f"Сообщение об ошибке: {response_data['error']}")
-    elif "result" in response_data:
+    result = _extract_unisender_result(
+        response.json, "Ошибка при отправке сообщения:"
+    )
+    if result is not None:
         logger.info("Сообщение успешно отправлено!")
-        logger.info(f"Email ID: {response_data['result']['email_id']}")
-    else:
-        logger.info(f"Неизвестный ответ от сервера: {response_data}")
+        logger.info(f"Email ID: {result['email_id']}")
 
 
 def send_request(list_id):
@@ -268,50 +290,48 @@ def send_request(list_id):
     }
     response = http_client.post_form(settings.EXPORT_UNISENDER, data)
     response_data = response.json
-    if "error" in response_data:
-        logger.info("Ошибка:")
-        logger.info(f"Код ошибки: {response_data['code']}")
-        logger.info(f"Сообщение об ошибке: {response_data['error']}")
-    elif "result" in response_data:
-        logger.info("Успешно!")
-        logger.info(f"result: {response_data['result']}")
-        return response_data
-    else:
-        logger.info(f"Неизвестный ответ от сервера: {response_data}")
+    result = _extract_unisender_result(response_data)
+    if result is None:
+        return None
+    logger.info("Успешно!")
+    logger.info(f"result: {result}")
+    return response_data
 
 
 def add_contacts(file_url):
     """Добавление доноров в БД из файла, получаемого по ссылке."""
-    response = http_client.request("GET", file_url)
-    if response.status == status.HTTP_200_OK:
-        bulk_list = list()
-        directory = "files"
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        file_path = os.path.join(directory, "data.csv")
+    response = http_client.request(HTTPMethod.GET, file_url)
+    if response.status != HTTPStatus.OK:
+        message = (
+            f"Файл по ссылке не получен, код ответа {response.status}."
+        )
+        logger.info(message)
+        return message
 
-        with open(file_path, "wb") as file:
-            file.write(response.read())
+    bulk_list = list()
+    directory = "files"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    file_path = os.path.join(directory, "data.csv")
 
-        with open(file_path, encoding="utf-8") as csv_file:
-            file_reader = csv.reader(csv_file, delimiter=",")
-            for row in file_reader:
-                if row[0] != "email" and donor_exists(row[0]) is False:
-                    bulk_list.append(
-                        Donor(
-                            email=row[0], subscription=settings.GROUPS[row[1]]
-                        ),
-                    )
-            Donor.objects.bulk_create(bulk_list)
+    with open(file_path, "wb") as file:
+        file.write(response.read())
 
-        try:
-            shutil.rmtree(directory)  # удаляем папку с файлом
-        except OSError as e:
-            raise f"Error: {e.filename, e.strerror}"
+    with open(file_path, encoding="utf-8") as csv_file:
+        file_reader = csv.reader(csv_file, delimiter=",")
+        for row in file_reader:
+            if row[0] != "email" and donor_exists(row[0]) is False:
+                bulk_list.append(
+                    Donor(
+                        email=row[0], subscription=settings.GROUPS[row[1]]
+                    ),
+                )
+        Donor.objects.bulk_create(bulk_list)
 
-        logger.info(f"Добавлено {len(bulk_list)} контактов.")
-        return f"Добавлено {len(bulk_list)} контактов."
-    logger.info(
-        f"Файл по ссылке не получен, код ответа {response.status}"
-    )
-    return f"Файл по ссылке не получен, код ответа {response.status}."
+    try:
+        shutil.rmtree(directory)  # удаляем папку с файлом
+    except OSError as e:
+        raise f"Error: {e.filename, e.strerror}"
+
+    logger.info(f"Добавлено {len(bulk_list)} контактов.")
+    return f"Добавлено {len(bulk_list)} контактов."

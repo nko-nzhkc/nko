@@ -1,5 +1,7 @@
 """Общий HTTP-клиент проекта."""
 
+from http import HTTPMethod
+
 from donor_base import di
 
 HTTP_TIMEOUT = 30.0
@@ -27,4 +29,4 @@ def request(method, url, **kwargs):
 
 def post_form(url, data):
     """Отправляет данные как application/x-www-form-urlencoded."""
-    return request("POST", url, form=_stringify_form_fields(data))
+    return request(HTTPMethod.POST, url, form=_stringify_form_fields(data))
