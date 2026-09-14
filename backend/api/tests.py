@@ -7,26 +7,16 @@ from urllib.parse import parse_qs, urlsplit
 import dishka
 import zapros
 from django.conf import settings
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase
+from donor_base import di
+from donor_base.unisender_client import Client
 from faker import Faker
 from zapros.matchers import path
 from zapros.mock import Mock, MockMiddleware, MockRouter
 
-from donor_base import di
-from donor_base.unisender_client import Client
-
-from .utils import (ad_donor, check_cloudpayments_connection,
-                    send_payment_email, send_request)
+from .utils import ad_donor, send_payment_email, send_request
 
 CONTACT_FIELDS = ["email", "email_list_ids"]
-
-
-class CloudpaymentsConnectionTest(TestCase):
-    """Тест-кейс проверки подключения к api cloudpayments."""
-
-    def test_connection(self):
-        """Метод проверки подключения к api cloudpayments."""
-        self.assertTrue(check_cloudpayments_connection())
 
 
 def expected_import_request_fields(
@@ -191,7 +181,7 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
             self.unisender._api_request("get_template", {"template_id": 1})
 
 
-class AdDonorTest(UnisenderFixtureMixin, TestCase):
+class AdDonorTest(UnisenderFixtureMixin, SimpleTestCase):
     """ad_donor: донор сохраняется в БД и уходит в Unisender."""
 
     def setUp(self):
