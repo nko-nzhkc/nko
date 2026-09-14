@@ -29,4 +29,4 @@ jobs:
       - name: Test with pytest
         run: |
           cp .env.example .env
-          docker compose run --rm backend pytest
+          docker compose run --rm backend sh -c "pip install -r requirements-dev.txt && pytest"
