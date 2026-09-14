@@ -7,7 +7,7 @@ from urllib.parse import parse_qs, urlsplit
 import dishka
 import zapros
 from django.conf import settings
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 from donor_base import di
 from donor_base.unisender_client import Client
 from faker import Faker
@@ -181,7 +181,7 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
             self.unisender._api_request("get_template", {"template_id": 1})
 
 
-class AdDonorTest(UnisenderFixtureMixin, SimpleTestCase):
+class AdDonorTest(UnisenderFixtureMixin, TestCase):
     """ad_donor: донор сохраняется в БД и уходит в Unisender."""
 
     def setUp(self):
