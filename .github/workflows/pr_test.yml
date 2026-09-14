@@ -29,6 +29,7 @@ jobs:
       - name: Check migrations
         run: |
           cp .env.example .env
+          sed -i 's#^CSRF_TRUSTED_ORIGINS=.*#CSRF_TRUSTED_ORIGINS=https://localhost#' .env
           docker compose run --rm backend python manage.py makemigrations --check --dry-run
 
       - name: Test with pytest
