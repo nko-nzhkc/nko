@@ -7,7 +7,6 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -23,23 +22,11 @@ jobs:
           pip install -r ./backend/requirements-dev.txt
           pip install -r ./backend/requirements.txt
 
-      - name: Start PostgreSQL
-        run: |
-          cp .env.example .env
-          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
-          docker compose up -d db
-
-      - name: Wait for PostgreSQL
-        run: |
-          until docker compose exec -T db pg_isready -U postgres -d postgres; do
-            sleep 1
-          done
-
       - name: Test with flake8
         run: |
           python -m flake8 --exclude=*/migrations/* backend/
 
       - name: Test with pytest
         run: |
-          cd backend
-          pytest
+          cp .env.example .env
+          docker compose run --rm backend pytest
