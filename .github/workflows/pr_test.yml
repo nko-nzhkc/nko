@@ -23,4 +23,5 @@ jobs:
           python -m flake8 --exclude=*/migrations/* backend/
       - name: Test with pytest
         run: |
+         cd backend
          pytest
