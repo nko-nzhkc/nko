@@ -19,8 +19,8 @@ from contacts.models import Donor
 from donor_base import http_client
 from mixplat.models import MixPlat
 from donor_base.constants import (
-    BAD_PAYMENTS_COUNT, BAD_STATUSES,
-    DATE_FORMAT, NEGATIVE_SUB_STAT,
+    BAD_PAYMENTS_COUNT, DATE_FORMAT,
+    NEGATIVE_SUB_STAT,
     PaymentStatuses,
     SubscriptionStatuses
 )
@@ -105,18 +105,11 @@ def check_donor_subscriptions(email):
     ).decode("utf-8")
     headers = {"Authorization": f"Basic {basic_encoded}"}
     body = {"accountId": f"{email}"}
-<<<<<<< HEAD
-    response = requests.post(url, headers=headers, json=body)
+    response = http_client.request("POST", url, headers=headers, json=body)
     return (
         SubscriptionStatuses.ACTIVE.capitalized if response.json()["Model"]
         else SubscriptionStatuses.INACTIVE.capitalized
     )
-=======
-    response = http_client.request("POST", url, headers=headers, json=body)
-    if response.json["Model"]:
-        return settings.SUBSCRIPTION_CHOICES[0][0]
-    return settings.SUBSCRIPTION_CHOICES[1][0]
->>>>>>> 002227f58d0fde32ad3f36b69664fed26a57c082
 
 
 def handling_cloudpayment_data(request):
@@ -330,22 +323,8 @@ def add_contacts(file_url):
         os.makedirs(directory)
     file_path = os.path.join(directory, "data.csv")
 
-<<<<<<< HEAD
-        with open(file_path, encoding="utf-8") as csv_file:
-            file_reader = csv.reader(csv_file, delimiter=",")
-            for row in file_reader:
-                if row[0] != "email" and donor_exists(row[0]) is False:
-                    bulk_list.append(
-                        Donor(
-                            email=row[0],
-                            subscription=get_name_by_group_id((row[1]))
-                        ),
-                    )
-            Donor.objects.bulk_create(bulk_list)
-=======
     with open(file_path, "wb") as file:
         file.write(response.read())
->>>>>>> 002227f58d0fde32ad3f36b69664fed26a57c082
 
     with open(file_path, encoding="utf-8") as csv_file:
         file_reader = csv.reader(csv_file, delimiter=",")
@@ -353,7 +332,8 @@ def add_contacts(file_url):
             if row[0] != "email" and donor_exists(row[0]) is False:
                 bulk_list.append(
                     Donor(
-                        email=row[0], subscription=settings.GROUPS[row[1]]
+                        email=row[0],
+                        subscription=get_name_by_group_id(row[1])
                     ),
                 )
         Donor.objects.bulk_create(bulk_list)
