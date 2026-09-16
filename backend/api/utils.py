@@ -24,7 +24,10 @@ from donor_base.constants import (
     PaymentStatuses,
     SubscriptionStatuses
 )
-from donor_base.subscriptions import get_name_by_group_id
+from donor_base.subscriptions import (
+    get_group_by_capitalized,
+    get_capitalized_by_group_id
+)
 
 
 logger = logging.getLogger(__name__)
@@ -57,7 +60,7 @@ def ad_donor(donor, subscription, update=False):
         "field_names[0]": "email",
         "field_names[1]": "email_list_ids",
         "data[0][0]": donor,
-        "data[0][1]": SubscriptionStatuses[subscription].group_id,
+        "data[0][1]": get_group_by_capitalized(subscription),
     }
     http_client.post_form(settings.IMPORT_UNISENDER, data)
 
@@ -333,7 +336,7 @@ def add_contacts(file_url):
                 bulk_list.append(
                     Donor(
                         email=row[0],
-                        subscription=get_name_by_group_id(row[1])
+                        subscription=get_capitalized_by_group_id(row[1])
                     ),
                 )
         Donor.objects.bulk_create(bulk_list)
