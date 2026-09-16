@@ -17,10 +17,13 @@ from rest_framework.response import Response
 from contacts.models import Donor
 from mixplat.models import MixPlat
 from donor_base.constants import (
-    BAD_COUNT, BAD_STATUSES,
-    DATE_FORMAT, NEY_SUB_STAT,
-    Subscriptions
+    BAD_PAYMENTS_COUNT, BAD_STATUSES,
+    DATE_FORMAT, NEGATIVE_SUB_STAT,
+    PaymentStatuses,
+    SubscriptionStatuses
 )
+from donor_base.subscriptions import get_name_by_group_id
+
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +52,7 @@ def ad_donor(donor, subscription, update=False):
         "field_names[0]": "email",
         "field_names[1]": "email_list_ids",
         "data[0][0]": donor,
-        "data[0][1]": Subscriptions[subscription].group_id,
+        "data[0][1]": SubscriptionStatuses[subscription].group_id,
     }
     response = requests.post(url, data=data, timeout=30)
 
@@ -76,9 +79,9 @@ def mixplat_request_handler(request):
         )
 
         if request.data.get("recurrent_id"):
-            subscription = Subscriptions.ACTIVE.capitalized
+            subscription = SubscriptionStatuses.ACTIVE.capitalized
         else:
-            subscription = Subscriptions.INACTIVE.capitalized
+            subscription = SubscriptionStatuses.INACTIVE.capitalized
 
         create_or_update_donor(mixplat_obj_dict, subscription)
         MixPlat.objects.create(**mixplat_obj_dict)
@@ -103,8 +106,8 @@ def check_donor_subscriptions(email):
     body = {"accountId": f"{email}"}
     response = requests.post(url, headers=headers, json=body)
     return (
-        Subscriptions.ACTIVE.capitalized if response.json()["Model"]
-        else Subscriptions.INACTIVE.capitalized
+        SubscriptionStatuses.ACTIVE.capitalized if response.json()["Model"]
+        else SubscriptionStatuses.INACTIVE.capitalized
     )
 
 
@@ -138,80 +141,80 @@ def create_or_update_donor(data, subscription):
     # Если донора нет в базе:
     if not donor_exists(data["email"]):
         # Если подписка неактивна:
-        if subscription == Subscriptions.INACTIVE.capitalized:
+        if subscription == SubscriptionStatuses.INACTIVE.capitalized:
             # Сохраняем как Inactive
             ad_donor(
                 data["email"],
-                Subscriptions.INACTIVE.capitalized,
+                SubscriptionStatuses.INACTIVE.capitalized,
             )
             logger.info(
                 f"Создан Донор {data['email']} "
-                f"{Subscriptions.INACTIVE.capitalized}"
+                f"{SubscriptionStatuses.INACTIVE.capitalized}"
             )
         # Если подписка активна:
-        elif subscription == Subscriptions.ACTIVE.capitalized:
+        elif subscription == SubscriptionStatuses.ACTIVE.capitalized:
             # Сохраняем как "Active"
             ad_donor(
                 data["email"],
-                Subscriptions.ACTIVE.capitalized,
+                SubscriptionStatuses.ACTIVE.capitalized,
             )
             # Отправляем донору письмо
             send_payment_email(
                 data["email"],
-                Subscriptions.ACTIVE.group_id,
+                SubscriptionStatuses.ACTIVE.group_id,
             )
             logger.info(
                 f"Создан Донор {data['email']} "
-                f"{Subscriptions.ACTIVE.capitalized}"
+                f"{SubscriptionStatuses.ACTIVE.capitalized}"
             )
     # Если донор есть в базе смотрим статус платежа
     else:
         donor = Donor.objects.get(email=data["email"])
         # Если платеж неуспешный
-        if data["status"] in BAD_STATUSES:
-            # Если в базе статус активен
-            if donor.subscription == Subscriptions.ACTIVE.capitalized:
-                # если у донора 3й отклонённый платёж
-                if donor.count_declined + 1 == BAD_COUNT:
-                    # Обновляем его статус на Lost
-                    ad_donor(
-                        data["email"],
-                        Subscriptions.LOST.capitalized,
-                        "update",
-                    )
-                    logger.info(
-                        f"У Донора {data['email']} обновлен статус "
-                        f"на {Subscriptions.LOST.capitalized}"
-                    )
-                else:
-                    Donor.objects.filter(email=data["email"]).update(
-                        count_declined=F("count_declined") + 1
-                    )
+        # и в базе статус активен
+        if (
+            data["status"] in PaymentStatuses
+            and donor.subscription == SubscriptionStatuses.ACTIVE.capitalized
+        ):
+            # если у донора 3й отклонённый платёж
+            if donor.count_declined + 1 == BAD_PAYMENTS_COUNT:
+                # Обновляем его статус на Lost
+                ad_donor(
+                    data["email"],
+                    SubscriptionStatuses.LOST.capitalized,
+                    "update",
+                )
+                logger.info(
+                    f"У Донора {data['email']} обновлен статус "
+                    f"на {SubscriptionStatuses.LOST.capitalized}"
+                )
+            else:
+                Donor.objects.filter(email=data["email"]).update(
+                    count_declined=F("count_declined") + 1
+                )
         # Если платеж успешный, обновляем запись
         else:
             # если активная подписка
-            if subscription == Subscriptions.ACTIVE.capitalized:
-                # если старый статус "Lost", "Inactive"
-                if donor.subscription in NEY_SUB_STAT:
-                    # Обновляем его статус на "Active"
-                    ad_donor(
-                        data["email"],
-                        Subscriptions.ACTIVE.capitalized,
-                        "update",
-                    )
-                    # Отправляем донору письмо
-                    send_payment_email(
-                        data["email"],
-                        Subscriptions.ACTIVE.group_id,
-                    )
-                    logger.info(
-                        f"У Донора {data['email']} обновлен статус "
-                        f"{Subscriptions.ACTIVE.capitalized}"
-                    )
-                else:
-                    Donor.objects.filter(email=data["email"]).update(
-                        count_declined=0
-                    )
+            # и старый статус "Lost", "Inactive"
+            if (
+                subscription == SubscriptionStatuses.ACTIVE.capitalized
+                and donor.subscription in NEGATIVE_SUB_STAT
+            ):
+                # Обновляем его статус на "Active"
+                ad_donor(
+                    data["email"],
+                    SubscriptionStatuses.ACTIVE.capitalized,
+                    "update",
+                )
+                # Отправляем донору письмо
+                send_payment_email(
+                    data["email"],
+                    SubscriptionStatuses.ACTIVE.group_id,
+                )
+                logger.info(
+                    f"У Донора {data['email']} обновлен статус "
+                    f"{SubscriptionStatuses.ACTIVE.capitalized}"
+                )
             else:
                 Donor.objects.filter(email=data["email"]).update(
                     count_declined=0
@@ -327,8 +330,7 @@ def add_contacts(file_url):
                     bulk_list.append(
                         Donor(
                             email=row[0],
-                            subscription=Subscriptions
-                            .get_capitalized_by_group_id(row[1])
+                            subscription=get_name_by_group_id((row[1]))
                         ),
                     )
             Donor.objects.bulk_create(bulk_list)

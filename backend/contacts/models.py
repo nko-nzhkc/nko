@@ -6,8 +6,8 @@ from django.db import models
 from api.validators import forbidden_words_validator
 
 from donor_base.constants import (
-    ZERO, MAX_USERNAME_LENGTH, MAX_EMAIL_LENGTH,
-    MAX_SUBJECT_LENGTH, Subscriptions
+    DEFAULT_DONATION, MAX_USERNAME_LENGTH, MAX_EMAIL_LENGTH,
+    MAX_SUBJECT_LENGTH, SubscriptionStatuses
 )
 
 
@@ -55,11 +55,13 @@ class Donor(models.Model):
         verbose_name="Электронная почта донора",
     )
     subscription = models.TextField(
-        choices=[(status.name, status.value) for status in Subscriptions],
+        choices=[
+            (status.name, status.verbosed) for status in SubscriptionStatuses
+        ],
         verbose_name="Статус подписки у донора",
     )
     count_declined = models.PositiveSmallIntegerField(
-        default=ZERO,
+        default=DEFAULT_DONATION,
         verbose_name="Счётчик неудачных платежей",
     )
 

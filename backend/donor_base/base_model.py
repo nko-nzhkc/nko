@@ -4,7 +4,7 @@ from django.db import models
 from api.validators import forbidden_words_validator
 
 from donor_base.constants import (
-    PAYMENT_METHOD_LENGTH, ZERO, MAX_EMAIL_LENGTH,
+    PAYMENT_METHOD_LENGTH, DEFAULT_DONATION, MAX_EMAIL_LENGTH,
     MAX_CURRENCY_LENGTH, MAX_PAYMENT_OPERATOR_LENGTH,
     MAX_PAYMENT_ID_LENGTH, MAX_PAYMENT_STATUS_LENGTH
 )
@@ -20,11 +20,11 @@ class BaseModelDonation(models.Model):
     )
     donat = models.PositiveSmallIntegerField(
         # choices=settings.AMOUNT,
-        default=ZERO,
+        default=DEFAULT_DONATION,
         verbose_name="Размер пожертвования",
     )
     custom_donat = models.PositiveIntegerField(
-        default=ZERO,
+        default=DEFAULT_DONATION,
         verbose_name="Кастомизированный размер пожертвования",
     )
     payment_method = models.CharField(
