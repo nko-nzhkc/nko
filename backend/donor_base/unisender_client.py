@@ -54,7 +54,7 @@ class Client:
         url = self._get_request_url(method)
         data = self._build_request_data(data, extra_key=None)
         return http_client.post_form(url, data)
-    
+
     def import_contacts(self, field_names, data, overwrite_lists=0):
         """Импортирует контакты в Unisender."""
         return self._api_request(

@@ -16,8 +16,8 @@ class SendUsersToUnisenderTaskTest(SimpleTestCase):
     @patch("api.tasks.SyncDonorsToUnisenderUseCase")
     def test_retries_network_error(self, use_case_class):
         """Сетевая ошибка приводит к Celery retry."""
-        use_case_class.return_value.execute.side_effect = zapros.ConnectionError(
-            "Connection failed"
+        use_case_class.return_value.execute.side_effect = (
+            zapros.ConnectionError("Connection failed")
         )
 
         with patch.object(
@@ -40,10 +40,9 @@ class SendUsersToUnisenderTaskTest(SimpleTestCase):
         response = zapros.Response(
             status=HTTPStatus.SERVICE_UNAVAILABLE,
         )
-        use_case_class.return_value.execute.side_effect = zapros.StatusCodeError(
-            response
+        use_case_class.return_value.execute.side_effect = (
+            zapros.StatusCodeError(response)
         )
-
         with patch.object(
             send_users_to_unisender,
             "retry",
