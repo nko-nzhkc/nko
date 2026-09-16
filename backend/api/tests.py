@@ -4,7 +4,6 @@ from http import HTTPMethod, HTTPStatus
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
-from backend import donor_base
 import dishka
 import zapros
 from django.conf import settings
