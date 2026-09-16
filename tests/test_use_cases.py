@@ -33,7 +33,7 @@ class SyncDonorsToUnisenderUseCaseTest(SimpleTestCase):
 
         SyncDonorsToUnisenderUseCase(repository, client).execute()
 
-        client.import_contacts.assert_called_once_with(
+        client.send_contacts_to_unisender.assert_called_once_with(
             field_names=UNISENDER_FIELD_NAMES,
             data=[
                 [f"donor-{index}@example.com", "5"]
@@ -55,7 +55,7 @@ class SyncDonorsToUnisenderUseCaseTest(SimpleTestCase):
         SyncDonorsToUnisenderUseCase(repository, client).execute()
 
         self.assertEqual(
-            client.import_contacts.call_args_list,
+            client.send_contacts_to_unisender.call_args_list,
             [
                 call(
                     field_names=UNISENDER_FIELD_NAMES,

@@ -1,31 +1,29 @@
 """Тесты репозиториев API."""
 
-from django.test import TestCase
+import pytest
 
 from api.repositories import DonorRepository
 from contacts.models import Donor
 
 
-class DonorRepositoryTest(TestCase):
-    """Проверяет выборку доноров."""
-
-    def test_get_donors_returns_email_and_subscription(self):
-        """Репозиторий возвращает данные, нужные Use Case."""
+@pytest.fixture
+def donors(db, faker):
+    """Создаёт доноров с разными статусами подписки."""
+    return [
         Donor.objects.create(
-            email="first@example.com",
-            subscription="Active",
+            email=faker.unique.email(),
+            subscription=subscription,
         )
-        Donor.objects.create(
-            email="second@example.com",
-            subscription="Inactive",
-        )
+        for subscription in ("Active", "Inactive")
+    ]
 
-        donors = list(DonorRepository().get_donors())
 
-        self.assertEqual(
-            donors,
-            [
-                ("first@example.com", "Active"),
-                ("second@example.com", "Inactive"),
-            ],
-        )
+def test_get_donors_returns_email_and_subscription(donors):
+    """Репозиторий возвращает данные, нужные use case."""
+    actual = list(DonorRepository().get_donors())
+    expected = [
+        (donor.email, donor.subscription)
+        for donor in donors
+    ]
+
+    assert sorted(actual) == sorted(expected)

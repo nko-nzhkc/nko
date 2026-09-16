@@ -13,7 +13,10 @@ def _iter_batches(iterable, batch_size):
     """Возвращает непустые пачки элементов заданного размера."""
     iterator = iter(iterable)
 
-    while batch := list(islice(iterator, batch_size)):
+    while True:
+        batch = list(islice(iterator, batch_size))
+        if not batch:
+            return
         yield batch
 
 
@@ -29,7 +32,7 @@ class SyncDonorsToUnisenderUseCase:
         donors = self.repository.get_donors()
 
         for donor_batch in _iter_batches(donors, UNISENDER_BATCH_SIZE):
-            self.client.import_contacts(
+            self.client.send_contacts_to_unisender(
                 field_names=UNISENDER_FIELD_NAMES,
                 data=[
                     [email, settings.GROUPS[subscription]]

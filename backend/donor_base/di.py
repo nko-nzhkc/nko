@@ -4,6 +4,9 @@ from collections.abc import Generator
 
 import dishka
 import zapros
+from django.conf import settings
+
+from donor_base.unisender_client import Client as UnisenderClient
 
 
 class AppProvider(dishka.Provider):
@@ -18,6 +21,15 @@ class AppProvider(dishka.Provider):
         yield client
         client.close()
 
+    @dishka.provide(scope=dishka.Scope.APP)
+    def unisender_client(self) -> UnisenderClient:
+        """Создаёт общий клиент Unisender."""
+        return UnisenderClient(
+            api_key=settings.UNISENDER_API_KEY,
+            platform="donor_base",
+            lang="ru",
+        )
+
 
 container = dishka.make_container(AppProvider())
 
@@ -25,3 +37,8 @@ container = dishka.make_container(AppProvider())
 def get_client() -> zapros.Client:
     """Возвращает общий HTTP-клиент приложения."""
     return container.get(zapros.Client)
+
+
+def get_unisender_client() -> UnisenderClient:
+    """Возвращает общий клиент Unisender."""
+    return container.get(UnisenderClient)
