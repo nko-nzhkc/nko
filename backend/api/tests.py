@@ -105,6 +105,18 @@ class UnisenderFixtureMixin:
             },
         )
 
+    def _assert_last_request_fields(self, mock, expected_fields):
+        """
+        Проверяет поля последнего исходящего запроса.
+
+        Аналог _assert_request_fields для тестов с subTest.
+        """
+        self.assertTrue(mock.called)
+        self.assertEqual(
+            self._parse_request_fields(mock.calls[-1]),
+            {key: str(value) for key, value in expected_fields.items()},
+        )
+
     def _parse_request_fields(self, request):
         """Разбирает поля тела исходящего form-urlencoded запроса."""
         body = request.body.decode("utf-8")
@@ -200,9 +212,8 @@ class AdDonorTest(UnisenderFixtureMixin, TestCase):
         """ad_donor отправляет донора в importContacts."""
         for status in self.statuses:
             with self.subTest(status=status):
-                self.import_mock.reset_mock()
                 ad_donor(self.email, status.capitalized)
-                self._assert_request_fields(
+                self._assert_last_request_fields(
                     self.import_mock,
                     expected_import_request_fields(
                         email=self.email,
