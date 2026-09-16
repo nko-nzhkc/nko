@@ -200,6 +200,7 @@ class AdDonorTest(UnisenderFixtureMixin, TestCase):
         """ad_donor отправляет донора в importContacts."""
         for status in self.statuses:
             with self.subTest(status=status):
+                self.import_mock.reset_mock()
                 ad_donor(self.email, status.capitalized)
                 self._assert_request_fields(
                     self.import_mock,
