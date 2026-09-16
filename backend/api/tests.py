@@ -10,6 +10,7 @@ from django.conf import settings
 from django.test import SimpleTestCase, TestCase
 from donor_base import di
 from donor_base.unisender_client import Client
+from donor_base.constants import SubscriptionStatuses
 from faker import Faker
 from zapros.matchers import path
 from zapros.mock import Mock, MockMiddleware, MockRouter
@@ -188,7 +189,7 @@ class AdDonorTest(UnisenderFixtureMixin, TestCase):
         """Настраивает зависимости теста."""
         super().setUp()
 
-        self.subscription = settings.SUBSCRIPTION_CHOICES[0][0]
+        self.subscription = SubscriptionStatuses.ACTIVE.capitalized
         self._override_settings(
             GROUPS={self.subscription: str(self.list_id)}
         )
