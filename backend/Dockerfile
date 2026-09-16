@@ -4,10 +4,16 @@ WORKDIR /app
 
 RUN pip install gunicorn==21.0.1
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 RUN pip install -r requirements.txt --no-cache-dir
 
-COPY . .
+COPY backend/ ./backend/
+
+COPY tests/ ./tests/
+
+COPY pytest.ini .
+
+ENV PYTHONPATH=/app/backend
 
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--access-logfile" , "-", "donor_base.wsgi"]

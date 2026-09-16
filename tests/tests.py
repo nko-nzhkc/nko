@@ -14,7 +14,7 @@ from faker import Faker
 from zapros.matchers import path
 from zapros.mock import Mock, MockMiddleware, MockRouter
 
-from .utils import ad_donor, send_payment_email, send_request
+from api.utils import ad_donor, send_payment_email, send_request
 
 CONTACT_FIELDS = ["email", "email_list_ids"]
 
