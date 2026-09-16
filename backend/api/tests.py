@@ -4,6 +4,7 @@ from http import HTTPMethod, HTTPStatus
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
+from backend import donor_base
 import dishka
 import zapros
 from django.conf import settings
@@ -189,17 +190,7 @@ class AdDonorTest(UnisenderFixtureMixin, TestCase):
         """Настраивает зависимости теста."""
         super().setUp()
 
-        self.subscription = SubscriptionStatuses.ACTIVE.capitalized
-        self._override_settings(
-            GROUPS={self.subscription: str(self.list_id)}
-        )
-        self.expected_request_fields = expected_import_request_fields(
-            email=self.email,
-            list_id=str(self.list_id),
-            api_key=self.api_key,
-            overwrite_lists=0,
-            format_="json",
-        )
+        self.statuses = list(SubscriptionStatuses)
         self.import_mock = self._mock_request(
             HTTPMethod.POST,
             settings.IMPORT_UNISENDER,
@@ -208,12 +199,19 @@ class AdDonorTest(UnisenderFixtureMixin, TestCase):
 
     def test_ad_donor_sends_donor_to_unisender(self):
         """ad_donor отправляет донора в importContacts."""
-        ad_donor(self.email, self.subscription)
-
-        self._assert_request_fields(
-            self.import_mock,
-            self.expected_request_fields,
-        )
+        for status in self.statuses:
+            with self.subTest(status=status):
+                ad_donor(self.email, status.capitalized)
+                self._assert_request_fields(
+                    self.import_mock,
+                    expected_import_request_fields(
+                        email=self.email,
+                        list_id=status.group_id,
+                        api_key=self.api_key,
+                        overwrite_lists=0,
+                        format_="json",
+                    ),
+                )
 
 
 class SendPaymentEmailTest(UnisenderFixtureMixin, SimpleTestCase):
