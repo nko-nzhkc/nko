@@ -8,5 +8,3 @@ class ViewListCreateMixinsSet(
     viewsets.GenericViewSet,
 ):
     """Сет миксинов: просмотр, создание."""
-
-    pass

@@ -8,4 +8,4 @@ class MixPlat(BaseModelDonation):
     class Meta:
         ordering = ("-pub_date", "status")
         verbose_name = "Платеж Mixplat"
-        verbose_name_plural = "Платежы Mixplat"
+        verbose_name_plural = "Платежи Mixplat"

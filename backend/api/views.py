@@ -82,17 +82,14 @@ class MixplatViewSet(viewsets.ModelViewSet):
 
 class CloudPaymentsViewSet(viewsets.GenericViewSet):
     """
-    Вьсюсет для Cloudpayment.
+    Вьюсет для Cloudpayment.
     """
 
     @action(detail=False, url_path="create_cloudpayment", methods=["post"])
     def create_cloudpayment(self, request):
         """
-        Создание экзепмляра Cloudpayment.
+        Создание экземпляра Cloudpayment.
         """
-        # TODO: Добавить настройку разрешений:
-        #  - создание записи только при запросе от сервиса Cloudpayments,
-        #  - просмотр, удаление - только админам
         serializer = CloudpaymentsSerializer(
             data=handling_cloudpayment_data(request)
         )
