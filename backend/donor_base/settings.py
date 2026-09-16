@@ -152,24 +152,6 @@ CELERY_BEAT_SCHEDULE = {
 
 # Константы проекта
 
-PAYMENT_METHOD_LENGTH = 64
-
-ZERO = 0
-THREE_HUNDRED = 300
-FIVE_HUNDRED = 500
-THOUSAND = 1000
-THREE_THOUSAND = 3000
-
-DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-
-EMPTY_VALUE = "-пусто-"
-
-MAX_USERNAME_LENGTH = 150
-MAX_EMAIL_LENGTH = 255
-MAX_SUBJECT_LENGTH = 255
-MAX_FORBIDDEN_WORD_LENGTH = 100
-MAX_CURRENCY_LENGTH = 10
-MAX_PAYMENT_OPERATOR_LENGTH = 250
 
 CLOUDPAYMENTS_PUBLIC_ID = os.getenv("CLOUDPAYMENTS_PUBLIC_ID")
 CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL = os.getenv(
@@ -178,9 +160,6 @@ CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL = os.getenv(
 CLOUDPAYMENTS_API_SECRET = os.getenv("CLOUDPAYMENTS_API_SECRET")
 CLOUDPAYMENTS_API_TEST_URL = os.getenv("CLOUDPAYMENTS_API_TEST_URL")
 
-MAX_PAYMENT_ID_LENGTH = 100
-MAX_PAYMENT_STATUS_LENGTH = 100
-MAX_USER_COMMENT_LENGTH = 100
 DEFAULT_CONF = {
     "base_url": "https://api.unisender.com",
     "lang": "en",
@@ -199,20 +178,3 @@ TEMPLATE_ID = os.getenv("TEMPLATE_ID")
 
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 UNISENDER_SENDER_NAME = os.getenv("UNISENDER_SENDER_NAME")
-
-SUBSCRIPTION_CHOICES = [
-    ("Active", "Подписка активна"),
-    ("Inactive", "Подписка отсутствует"),
-    ("Lost", "Подписка утрачена"),
-]
-GROUPS = {
-    "5": "Active",
-    "Active": "5",
-    "7": "Inactive",
-    "Inactive": "7",
-    "9": "Lost",
-    "Lost": "9",
-}
-BAD_COUNT = 3
-BAD_STATUSES = ["Cancelled", "Declined", "failure"]
-NEW_SUB_STAT = ["Lost", "Inactive"]
