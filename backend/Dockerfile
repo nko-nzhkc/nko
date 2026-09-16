@@ -8,12 +8,10 @@ COPY backend/requirements.txt .
 
 RUN pip install -r requirements.txt --no-cache-dir
 
-COPY backend/ ./backend/
+COPY backend/ ./
 
 COPY tests/ ./tests/
 
 COPY pytest.ini .
-
-ENV PYTHONPATH=/app/backend
 
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--access-logfile" , "-", "donor_base.wsgi"]
