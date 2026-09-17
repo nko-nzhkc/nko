@@ -1,10 +1,12 @@
 from datetime import datetime
 from json import JSONDecodeError
+from typing import TypedDict, TypeAlias
 from zoneinfo import ZoneInfo
 
 import pytest
 from django.utils.timezone import is_aware
-from unittest.mock import PropertyMock
+from unittest.mock import MagicMock, Mock, PropertyMock
+
 
 from api.utils import (
     ad_donor,
@@ -21,8 +23,18 @@ from donor_base.test_settings import (
 )
 
 
+class InnerItem(TypedDict):
+    """Единичная пара ключ-значение внутри списка Model ответа Unisender."""
+    item_key: str
+    item_value: str
+
+
+# Структура декодированного JSON-тела мокированного HTTP-ответа Unisender.
+Response: TypeAlias = dict[str, list[InnerItem] | bool | None]
+
+
 @pytest.mark.parametrize(
-    'value, expected',
+    'date_string, expected',
     [
         (
             '2026-9-16 17:00:00',
@@ -33,24 +45,41 @@ from donor_base.test_settings import (
         (None, TypeError),
     ]
 )
-def test_string_to_date(value: str, expected: datetime):
+def test_string_to_date(
+    date_string: str | None,
+    expected: datetime | type[ValueError] | type[TypeError],
+) -> None:
+    """Проверяет преобразование строки в datetime и наличие временной зоны.
+
+    Если *expected* является классом исключения, функция должна его выбросить.
+    В противном случае результат должен совпадать с *expected* и быть
+    timezone-aware.
+    """
     if expected in (TypeError, ValueError):
         with pytest.raises((TypeError, ValueError)):
-            string_to_date(value)
+            string_to_date(date_string)
     else:
-        result = string_to_date(value)
-        assert result == expected
-        assert is_aware(result)
+        convertion_result = string_to_date(date_string)
+        assert convertion_result == expected
+        assert is_aware(convertion_result)
 
 
 @pytest.mark.django_db
-def test_donor_exists_donor_in_db():
+def test_donor_exists_donor_in_db() -> None:
+    """Проверяет корретный кейс работы donor_exists.
+
+    donor_exists возвращает True, если email присутствует в базе данных.
+    """
     Donor.objects.create(email='donor@example.com')
     assert donor_exists(email='donor@example.com') is True
 
 
 @pytest.mark.django_db
-def test_donor_exists_donor_not_in_db():
+def test_donor_exists_donor_not_in_db() -> None:
+    """Проверяет ошибочный кейс работы donor_exists.
+
+    donor_exists возвращает False, если email отсутствует в базе данных.
+    """
     assert donor_exists(email='nonexistent@example.com') is False
 
 
@@ -95,12 +124,23 @@ def test_donor_exists_donor_not_in_db():
     ]
 )
 def test_check_donor_subscription(
-    mock_http_response,
-    email,
-    response,
-    error,
-    sub_status
-):
+    mock_http_response: Mock,
+    email: str,
+    response: Response | None,
+    error: type[KeyError] | type[JSONDecodeError] | None,
+    sub_status: str | None,
+) -> None:
+    """Проверяет check_donor_subscriptions на различных формах HTTP-ответа.
+
+    Args:
+        mock_http_response: Фикстура с мокированным объектом HTTP-ответа.
+        email: Email донора, передаваемый в тестируемую функцию.
+        response: Декодированное JSON-тело, которое должен вернуть мок,
+            или None для имитации повреждённого JSON.
+        error: Ожидаемый класс исключения или None, если исключение
+            не ожидается.
+        sub_status: Ожидаемый статус подписки, возвращаемый при успехе.
+    """
     if error is JSONDecodeError:
         type(mock_http_response).json = PropertyMock(
             side_effect=JSONDecodeError('Expecting value', '', 0)
@@ -113,8 +153,8 @@ def test_check_donor_subscription(
             check_donor_subscriptions(email)
         return
 
-    result = check_donor_subscriptions(email)
-    assert result == sub_status
+    check_result = check_donor_subscriptions(email)
+    assert check_result == sub_status
 
 
 @pytest.mark.django_db
@@ -131,7 +171,26 @@ def test_check_donor_subscription(
         )
     ]
 )
-def test_ad_donor(mock_http_client, email, sub_status, update):
+def test_ad_donor(
+    mock_http_client: MagicMock,
+    email: str,
+    sub_status: str,
+    update: bool,
+) -> None:
+    """Проверяет, создание/обновление донора и вызов API Unisender в ad_donor.
+
+    В случаях с *update* предварительно создаётся донор с другим статусом
+    подписки (для случая деактивации) и ненулевым счётчиком отклонений,
+    чтобы убедиться, что оба поля корректно перезаписываются.
+
+    Args:
+        mock_http_client: Фикстура с мокированным HTTP-клиентом, внедряемым
+            в тестируемую функцию.
+        email: Email донора для создания или поиска.
+        sub_status: Целевой статус подписки, который должен быть применён.
+        update: Если True, донор создаётся заранее для проверки ветки
+            обновления.
+    """
     mock_client = mock_http_client
 
     if update:
