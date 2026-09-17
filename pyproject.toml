@@ -17,6 +17,8 @@ dependencies = [
     "whitenoise (>=6.12,<7.0)",
     "psycopg2-binary (>=2.9,<3.0)",
     "filelock (>=3.32,<4.0)",
+    "dishka (>=1.10.1,<2.0.0)",
+    "zapros (>=0.17.0,<0.18.0)",
 ]
 
 [dependency-groups]
