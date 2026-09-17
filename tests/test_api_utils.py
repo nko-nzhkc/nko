@@ -1,26 +1,21 @@
 from datetime import datetime
 from json import JSONDecodeError
-from typing import TypedDict, TypeAlias
+from typing import Callable, TypedDict, TypeAlias
 from zoneinfo import ZoneInfo
 
 import pytest
 from django.utils.timezone import is_aware
-from unittest.mock import MagicMock, Mock, PropertyMock
+from unittest.mock import MagicMock, Mock, PropertyMock, call
 
-
+import donor_base.test_settings as settings
 from api.utils import (
     ad_donor,
     check_donor_subscriptions,
     donor_exists,
-    string_to_date
+    send_payment_email,
+    string_to_date,
 )
 from contacts.models import Donor
-from donor_base.test_settings import (
-    GROUPS,
-    IMPORT_UNISENDER,
-    SUBSCRIPTION_CHOICES,
-    UNISENDER_API_KEY,
-)
 
 
 class InnerItem(TypedDict):
@@ -34,16 +29,22 @@ Response: TypeAlias = dict[str, list[InnerItem] | bool | None]
 
 
 @pytest.mark.parametrize(
-    'date_string, expected',
+    "date_string, expected",
     [
         (
-            '2026-9-16 17:00:00',
-            datetime(2026, 9, 16, 17, 0, 0, tzinfo=ZoneInfo(key='UTC'))
+            "2026-9-16 17:00:00",
+            datetime(2026, 9, 16, 17, 0, 0, tzinfo=ZoneInfo(key="UTC"))
         ),
-        ('Неверная строка', ValueError),
-        ('', ValueError),
+        ("Неверная строка", ValueError),
+        ("", ValueError),
         (None, TypeError),
-    ]
+    ],
+    ids=[
+        "valid_date_string",
+        "invalid_date_string",
+        "empty_string",
+        "none_input",
+    ],
 )
 def test_string_to_date(
     date_string: str | None,
@@ -70,8 +71,8 @@ def test_donor_exists_donor_in_db() -> None:
 
     donor_exists возвращает True, если email присутствует в базе данных.
     """
-    Donor.objects.create(email='donor@example.com')
-    assert donor_exists(email='donor@example.com') is True
+    Donor.objects.create(email="donor@example.com")
+    assert donor_exists(email="donor@example.com") is True
 
 
 @pytest.mark.django_db
@@ -80,48 +81,54 @@ def test_donor_exists_donor_not_in_db() -> None:
 
     donor_exists возвращает False, если email отсутствует в базе данных.
     """
-    assert donor_exists(email='nonexistent@example.com') is False
+    assert donor_exists(email="nonexistent@example.com") is False
 
 
 @pytest.mark.parametrize(
-    'email, response, error, sub_status',
+    "email, response, error, sub_status",
     [
         (
-            'sub_email@example.com',
+            "sub_email@example.com",
             {
-                'Model': [{'value': 'non_empty'}],
-                'Success': True,
-                'Message': None
+                "Model": [{"value": "non_empty"}],
+                "Success": True,
+                "Message": None
             },
             None,
-            SUBSCRIPTION_CHOICES[0][0]
+            settings.SUBSCRIPTION_CHOICES[0][0]
         ),
         (
-            'no_sub_email@example.com',
+            "no_sub_email@example.com",
             {
-                'Model': [],
-                'Success': True,
-                'Message': None
+                "Model": [],
+                "Success": True,
+                "Message": None
             },
             None,
-            SUBSCRIPTION_CHOICES[1][0]
+            settings.SUBSCRIPTION_CHOICES[1][0]
         ),
         (
-            'wrong_response@example.com',
+            "wrong_response@example.com",
             {
-                'Success': False,
-                'Message': None
+                "Success": False,
+                "Message": None
             },
             KeyError,
             None
         ),
         (
-            'broken_json@example.com',
+            "broken_json@example.com",
             None,
             JSONDecodeError,
             None
         ),
-    ]
+    ],
+    ids=[
+        "subscribed",
+        "not_subscribed",
+        "missing_model_key",
+        "broken_json",
+    ],
 )
 def test_check_donor_subscription(
     mock_http_response: Mock,
@@ -143,7 +150,7 @@ def test_check_donor_subscription(
     """
     if error is JSONDecodeError:
         type(mock_http_response).json = PropertyMock(
-            side_effect=JSONDecodeError('Expecting value', '', 0)
+            side_effect=JSONDecodeError("Expecting value", "", 0)
         )
     else:
         mock_http_response.json = response
@@ -159,17 +166,35 @@ def test_check_donor_subscription(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    'email, sub_status, update',
+    "email, sub_status, update",
     [
-        ('new_active@example.com', SUBSCRIPTION_CHOICES[0][0], False),
-        ('new_inactive@example.com', SUBSCRIPTION_CHOICES[1][0], False),
-        ('old_active@example.com', SUBSCRIPTION_CHOICES[0][0], True),
         (
-            'old_active_pay_declined@example.com',
-            SUBSCRIPTION_CHOICES[2][0],
+            "new_active@example.com",
+            settings.SUBSCRIPTION_CHOICES[0][0],
+            False,
+        ),
+        (
+            "new_inactive@example.com",
+            settings.SUBSCRIPTION_CHOICES[1][0],
+            False,
+        ),
+        (
+            "old_active@example.com",
+            settings.SUBSCRIPTION_CHOICES[0][0],
+            True,
+        ),
+        (
+            "old_active_pay_declined@example.com",
+            settings.SUBSCRIPTION_CHOICES[2][0],
             True
         )
-    ]
+    ],
+    ids=[
+        "create_active_subscriber",
+        "create_inactive_subscriber",
+        "update_active_subscriber",
+        "update_payment_declined_subscriber",
+    ],
 )
 def test_ad_donor(
     mock_http_client: MagicMock,
@@ -177,7 +202,7 @@ def test_ad_donor(
     sub_status: str,
     update: bool,
 ) -> None:
-    """Проверяет, создание/обновление донора и вызов API Unisender в ad_donor.
+    """Проверяет создание/обновление донора и вызов API Unisender в ad_donor.
 
     В случаях с *update* предварительно создаётся донор с другим статусом
     подписки (для случая деактивации) и ненулевым счётчиком отклонений,
@@ -196,7 +221,7 @@ def test_ad_donor(
     if update:
         Donor.objects.create(
             email=email,
-            subscription=SUBSCRIPTION_CHOICES[0][0],
+            subscription=settings.SUBSCRIPTION_CHOICES[0][0],
             count_declined=1,
         )
 
@@ -208,14 +233,115 @@ def test_ad_donor(
     assert donor_obj.count_declined == 0
 
     mock_client.post_form.assert_called_once_with(
-        IMPORT_UNISENDER,
+        settings.IMPORT_UNISENDER,
         {
-            'format': 'json',
-            'api_key': UNISENDER_API_KEY,
-            'overwrite_lists': 1 if update else 0,
-            'field_names[0]': 'email',
-            'field_names[1]': 'email_list_ids',
-            'data[0][0]': email,
-            'data[0][1]': GROUPS[sub_status],
+            "format": "json",
+            "api_key": settings.UNISENDER_API_KEY,
+            "overwrite_lists": 1 if update else 0,
+            "field_names[0]": "email",
+            "field_names[1]": "email_list_ids",
+            "data[0][0]": email,
+            "data[0][1]": settings.GROUPS[sub_status],
         }
     )
+
+
+def test_send_payment_email_success(
+    mock_http_client: MagicMock,
+    mock_unisender_success: dict[str, str],
+) -> None:
+    email = "donor@example.com"
+    list_id = settings.GROUPS[settings.SUBSCRIPTION_CHOICES[0][0]]
+    template = mock_unisender_success()
+
+    send_payment_email(email, list_id)
+
+    assert mock_http_client.post_form.call_count == 2
+
+    first_call, second_call = mock_http_client.post_form.call_args_list
+
+    assert first_call == call(
+        settings.URL_GET_TEMP,
+        {
+            "format": "json",
+            "api_key": settings.UNISENDER_API_KEY,
+            "template_id": settings.TEMPLATE_ID,
+        }
+    )
+    assert second_call == call(
+        settings.URL_SEND_EMAIL,
+        {
+            "format": "json",
+            "api_key": settings.UNISENDER_API_KEY,
+            "email": email,
+            "sender_email": settings.DEFAULT_FROM_EMAIL,
+            "sender_name": settings.UNISENDER_SENDER_NAME,
+            "subject": template["subject"],
+            "body": template["body"],
+            "list_id": list_id,
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    "first_response",
+    [
+        {"error": "Invalid api_key", "code": "invalid_api_key"},
+        {"unexpected_key": "unexpected_value"},
+    ],
+    ids=["error_in_response", "no_result_no_error"],
+)
+def test_send_payment_email_bad_template_response(
+    mock_http_client: MagicMock,
+    mock_unisender_error: Callable[[dict[str, str]], None],
+    first_response: dict[str, str],
+) -> None:
+    """Проверяет отсутствие второго запроса при ошибке получения шаблона.
+
+    Если ответ на запрос шаблона содержит ``"error"`` или не содержит
+    ни ``"result"``, ни ``"error"``, функция должна прервать выполнение,
+    не совершая второй вызов post_form.
+
+    Args:
+        mock_http_client: Фикстура с мокированным HTTP-клиентом.
+        mock_unisender_error: Фикстура, настраивающая мок на ответ с ошибкой.
+        first_response: Ответ на запрос шаблона, не содержащий ``"result"``.
+    """
+    mock_unisender_error(first_response)
+
+    send_payment_email("donor@example.com", "1")
+
+    assert mock_http_client.post_form.call_count == 1
+    mock_http_client.post_form.assert_called_once_with(
+        settings.URL_GET_TEMP,
+        {
+            "format": "json",
+            "api_key": settings.UNISENDER_API_KEY,
+            "template_id": settings.TEMPLATE_ID,
+        }
+    )
+
+
+def test_send_payment_email_bad_send_response(
+    mock_http_client: MagicMock,
+    mock_unisender_mixed: Callable[..., dict[str, str]],
+) -> None:
+    """Проверяет поведение при ошибке в ответе на отправку письма.
+
+    Первый запрос (получение шаблона) завершается успешно, второй
+    (отправка письма) возвращает ответ с ``"error"``. Функция должна
+    совершить оба вызова post_form и не выбрасывать исключений.
+
+    Args:
+        mock_http_client: Фикстура с мокированным HTTP-клиентом.
+        mock_unisender_mixed: Фикстура, задающая последовательность
+            успешного ответа с шаблоном и ответа с ошибкой отправки.
+    """
+    email = "donor@example.com"
+    list_id = settings.GROUPS[settings.SUBSCRIPTION_CHOICES[0][0]]
+
+    mock_unisender_mixed()
+
+    send_payment_email(email, list_id)
+
+    assert mock_http_client.post_form.call_count == 2
