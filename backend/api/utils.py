@@ -302,9 +302,7 @@ def add_contacts(file_url):
     """Добавление доноров в БД из файла, получаемого по ссылке."""
     response = http_client.request(HTTPMethod.GET, file_url)
     if response.status != HTTPStatus.OK:
-        message = (
-            f"Файл по ссылке не получен, код ответа {response.status}."
-        )
+        message = f"Файл по ссылке не получен, код ответа {response.status}."
         logger.info(message)
         return message
 
@@ -322,9 +320,7 @@ def add_contacts(file_url):
         for row in file_reader:
             if row[0] != "email" and donor_exists(row[0]) is False:
                 bulk_list.append(
-                    Donor(
-                        email=row[0], subscription=settings.GROUPS[row[1]]
-                    ),
+                    Donor(email=row[0], subscription=settings.GROUPS[row[1]]),
                 )
         Donor.objects.bulk_create(bulk_list)
 
