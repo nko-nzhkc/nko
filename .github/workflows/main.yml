@@ -1,4 +1,5 @@
-name : Main Crisis-center Workflow
+name: Main Crisis-center Workflow
+
 on:
   push:
     branches:
@@ -7,6 +8,7 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -14,7 +16,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.13.15"
+          python-version: "3.13"
 
       - name: Install Poetry
         run: |
@@ -22,53 +24,56 @@ jobs:
           echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
 
       - name: Install dependencies
-        working-directory: ./backend
         run: |
           poetry install
 
       - name: Test with flake8
-        working-directory: ./backend
         run: |
-          poetry run flake8 --exclude=*/migrations/* .
-      
-      # - name: Test with pytest
-      #   run: |
-      #     poetry run pytest
+          poetry run flake8 --exclude=*/migrations/* backend/
 
   build_backend_and_push_to_docker_hub:
     name: Push backend Docker image to DockerHub
     runs-on: ubuntu-latest
     needs: tests
+
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+
       - name: Login to Docker
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Push ot DockerHub
+
+      - name: Push to DockerHub
         uses: docker/build-push-action@v4
         with:
-          context: ./backend/
+          context: .
+          file: ./backend/Dockerfile
           push: true
           tags: amadeus161/crisis-center_backend:latest
 
   build_nginx_and_push_to_docker_hub:
     name: Push nginx Docker image to DockerHub
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+
       - name: Login to Docker
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
       - name: Push to DockerHub
         uses: docker/build-push-action@v4
         with:
@@ -83,54 +88,53 @@ jobs:
       - build_nginx_and_push_to_docker_hub
 
     steps:
-    - name: Setup SSH
-      uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.SSH_KEY }}
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
 
-    - name: Display ssh-agent status
-      run: ssh-add -l
+      - name: Display ssh-agent status
+        run: ssh-add -l
 
-    - name: Add known_hosts
-      run: |
-        mkdir -p ~/.ssh
-        ssh-keyscan ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+      - name: Add known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan ${{ secrets.HOST }} >> ~/.ssh/known_hosts
 
-    - name: Restart project using ssh
-      run: |
-        ssh ${{ secrets.HOST_USER }}@${{ secrets.HOST }} "cd acquirings && rm .env && touch .env && \
-        echo SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} >> .env && \
-        echo DEBUG=${{ secrets.DEBUG }} >> .env && \
-        echo ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }} >> .env && \
-        echo CSRF_TRUSTED_ORIGINS=${{ secrets.CSRF_TRUSTED_ORIGINS }} >> .env && \
-        echo POSTGRES_DB=${{ secrets.DB_NAME }} >> .env && \
-        echo POSTGRES_USER=${{ secrets.DB_USER }} >> .env && \
-        echo POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }} >> .env && \
-        echo DB_HOST=${{ secrets.DB_HOST }} >> .env && \
-        echo DB_PORT=${{ secrets.DB_PORT }} >> .env && \
-        echo CLOUDPAYMENTS_PUBLIC_ID=${{ secrets.CLOUDPAYMENTS_PUBLIC_ID }} >> .env && \
-        echo CLOUDPAYMENTS_API_SECRET=${{ secrets.CLOUDPAYMENTS_API_SECRET }} >> .env && \
-        echo CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL=${{ secrets.CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL }} >> .env && \
-        echo CLOUDPAYMENTS_API_TEST_URL=${{ secrets.CLOUDPAYMENTS_API_TEST_URL }} >> .env && \
-        echo UNISENDER_API_KEY=${{ secrets.UNISENDER_API_KEY }} >> .env && \
-        echo UNISENDER_SENDER_NAME=${{ secrets.UNISENDER_SENDER_NAME }} >> .env && \
-        echo DEFAULT_FROM_EMAIL=${{ secrets.DEFAULT_FROM_EMAIL }} >> .env && \
-        echo REQUEST_URL=${{ secrets.REQUEST_URL }} >> .env && \
-        echo TEMPLATE_ID=${{ secrets.TEMPLATE_ID }} >> .env && \
-        docker compose -f docker-compose.production.yml pull && \
-        docker compose -f docker-compose.production.yml down && \
-        docker compose -f docker-compose.production.yml up -d && \
-        docker compose -f docker-compose.production.yml exec backend bash -c "python manage.py makemigrations" && \
-        docker compose -f docker-compose.production.yml exec backend bash -c "python manage.py migrate" && \
-        docker image prune -a -f"
+      - name: Restart project using ssh
+        run: |
+          ssh ${{ secrets.HOST_USER }}@${{ secrets.HOST }} "cd acquirings && rm .env && touch .env && \
+          echo SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} >> .env && \
+          echo DEBUG=${{ secrets.DEBUG }} >> .env && \
+          echo ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }} >> .env && \
+          echo CSRF_TRUSTED_ORIGINS=${{ secrets.CSRF_TRUSTED_ORIGINS }} >> .env && \
+          echo POSTGRES_DB=${{ secrets.DB_NAME }} >> .env && \
+          echo POSTGRES_USER=${{ secrets.DB_USER }} >> .env && \
+          echo POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }} >> .env && \
+          echo DB_HOST=${{ secrets.DB_HOST }} >> .env && \
+          echo DB_PORT=${{ secrets.DB_PORT }} >> .env && \
+          echo CLOUDPAYMENTS_PUBLIC_ID=${{ secrets.CLOUDPAYMENTS_PUBLIC_ID }} >> .env && \
+          echo CLOUDPAYMENTS_API_SECRET=${{ secrets.CLOUDPAYMENTS_API_SECRET }} >> .env && \
+          echo CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL=${{ secrets.CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL }} >> .env && \
+          echo CLOUDPAYMENTS_API_TEST_URL=${{ secrets.CLOUDPAYMENTS_API_TEST_URL }} >> .env && \
+          echo UNISENDER_API_KEY=${{ secrets.UNISENDER_API_KEY }} >> .env && \
+          echo UNISENDER_SENDER_NAME=${{ secrets.UNISENDER_SENDER_NAME }} >> .env && \
+          echo DEFAULT_FROM_EMAIL=${{ secrets.DEFAULT_FROM_EMAIL }} >> .env && \
+          echo REQUEST_URL=${{ secrets.REQUEST_URL }} >> .env && \
+          echo TEMPLATE_ID=${{ secrets.TEMPLATE_ID }} >> .env && \
+          docker compose -f docker-compose.production.yml pull && \
+          docker compose -f docker-compose.production.yml down && \
+          docker compose -f docker-compose.production.yml up -d && \
+          docker compose -f docker-compose.production.yml exec backend bash -c "python manage.py makemigrations" && \
+          docker compose -f docker-compose.production.yml exec backend bash -c "python manage.py migrate" && \
+          docker image prune -a -f"
 
-    - name: Run Celery worker
-      run: |
-        ssh ${{ secrets.HOST_USER }}@${{ secrets.HOST }} "cd acquirings && \
-        docker compose -f docker-compose.production.yml exec backend bash -c 'celery -A donor_base worker --loglevel=info -D'"
+      - name: Run Celery worker
+        run: |
+          ssh ${{ secrets.HOST_USER }}@${{ secrets.HOST }} "cd acquirings && \
+          docker compose -f docker-compose.production.yml exec backend bash -c 'celery -A donor_base worker --loglevel=info -D'"
 
-    - name: Run Celery beat
-      run: |
-        ssh ${{ secrets.HOST_USER }}@${{ secrets.HOST }} "cd acquirings && \
-        docker compose -f docker-compose.production.yml exec backend bash -c 'celery -A donor_base beat --loglevel=info > /dev/null 2>&1 &'"
-
+      - name: Run Celery beat
+        run: |
+          ssh ${{ secrets.HOST_USER }}@${{ secrets.HOST }} "cd acquirings && \
+          docker compose -f docker-compose.production.yml exec backend bash -c 'celery -A donor_base beat --loglevel=info > /dev/null 2>&1 &'"
