@@ -27,6 +27,7 @@ dev = [
     "pytest (>=9.1,<10.0)",
     "pytest-django (>=4.14,<5.0)",
     "flake8 (>=7,<8)",
+    "faker (>=40.39.0,<41.0.0)",
 ]
 production = [
     "gunicorn (>=21.0,<22.0)",
