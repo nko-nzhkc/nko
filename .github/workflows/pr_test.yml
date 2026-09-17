@@ -34,8 +34,8 @@ jobs:
         run: |
           cp .env.example .env
           sed -i 's#^CSRF_TRUSTED_ORIGINS=.*#CSRF_TRUSTED_ORIGINS=https://localhost#' .env
-          poetry run python backend/manage.py makemigrations --check --dry-run
+          docker compose run --rm backend poetry run python manage.py makemigrations --check --dry-run
 
       - name: Test with pytest
         run: |
-          poetry run pytest backend/
+          docker compose run --rm backend sh -c "poetry install && poetry run pytest"
