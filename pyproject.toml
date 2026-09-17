@@ -1,6 +1,6 @@
 [tool.pytest.ini_options]
 testpaths = ['tests']
 pythonpath = ['backend']
-DJANGO_SETTINGS_MODULE = 'donor_base.settings_test'
+DJANGO_SETTINGS_MODULE = 'donor_base.test_settings'
 python_files = 'tests.py test_*.py *_tests.py'
 django_find_project = false

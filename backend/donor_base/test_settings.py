@@ -6,3 +6,6 @@ DATABASES = {
         "NAME": ":memory:",
     }
 }
+CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL = 'http://mock.net/subscription/find'
+CLOUDPAYMENTS_PUBLIC_ID = 'test_id'
+CLOUDPAYMENTS_API_SECRET = 'test_secret'
