@@ -5,10 +5,10 @@ volumes:
 
 services:
   db:
-    image: postgres:16
+    image: postgres:18
     env_file: .env
     volumes:
-      - pg_data_production:/var/lib/postgresql/data
+      - pg_data_production:/var/lib/postgresql
     restart: always
 
   backend:

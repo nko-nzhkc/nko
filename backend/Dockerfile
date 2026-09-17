@@ -14,6 +14,6 @@ COPY poetry.lock .
 
 RUN poetry install --without dev
 
-COPY . .
+COPY backend/ .
 
 CMD ["poetry", "run", "gunicorn", "--bind", "0.0.0.0:8000", "--access-logfile" , "-", "donor_base.wsgi"]
