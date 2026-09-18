@@ -1,5 +1,6 @@
 from datetime import datetime
 from json import JSONDecodeError
+from types import MappingProxyType
 from typing import Callable, TypedDict, TypeAlias
 from zoneinfo import ZoneInfo
 
@@ -7,7 +8,7 @@ import pytest
 from django.utils.timezone import is_aware
 from unittest.mock import MagicMock, Mock, PropertyMock, call
 
-import donor_base.test_settings as settings
+from donor_base import test_settings as settings
 from api.utils import (
     ad_donor,
     check_donor_subscriptions,
@@ -16,6 +17,14 @@ from api.utils import (
     string_to_date,
 )
 from contacts.models import Donor
+
+
+EXAMPLE_EMAIL = "donor@example.com"
+BASE_PAYLOAD = MappingProxyType({
+    "format": "json",
+    "api_key": settings.UNISENDER_API_KEY,
+})
+EXAMPLE_DATE = (2026, 9, 16, 17, 0, 0)
 
 
 class InnerItem(TypedDict):
@@ -33,7 +42,7 @@ Response: TypeAlias = dict[str, list[InnerItem] | bool | None]
     [
         (
             "2026-9-16 17:00:00",
-            datetime(2026, 9, 16, 17, 0, 0, tzinfo=ZoneInfo(key="UTC"))
+            datetime(*EXAMPLE_DATE, tzinfo=ZoneInfo(key="UTC"))
         ),
         ("Неверная строка", ValueError),
         ("", ValueError),
@@ -71,8 +80,8 @@ def test_donor_exists_donor_in_db() -> None:
 
     donor_exists возвращает True, если email присутствует в базе данных.
     """
-    Donor.objects.create(email="donor@example.com")
-    assert donor_exists(email="donor@example.com") is True
+    Donor.objects.create(email=EXAMPLE_EMAIL)
+    assert donor_exists(email=EXAMPLE_EMAIL) is True
 
 
 @pytest.mark.django_db
@@ -235,8 +244,7 @@ def test_ad_donor(
     mock_client.post_form.assert_called_once_with(
         settings.IMPORT_UNISENDER,
         {
-            "format": "json",
-            "api_key": settings.UNISENDER_API_KEY,
+            **BASE_PAYLOAD,
             "overwrite_lists": 1 if update else 0,
             "field_names[0]": "email",
             "field_names[1]": "email_list_ids",
@@ -250,7 +258,7 @@ def test_send_payment_email_success(
     mock_http_client: MagicMock,
     mock_unisender_success: dict[str, str],
 ) -> None:
-    email = "donor@example.com"
+    email = EXAMPLE_EMAIL
     list_id = settings.GROUPS[settings.SUBSCRIPTION_CHOICES[0][0]]
     template = mock_unisender_success()
 
@@ -263,16 +271,14 @@ def test_send_payment_email_success(
     assert first_call == call(
         settings.URL_GET_TEMP,
         {
-            "format": "json",
-            "api_key": settings.UNISENDER_API_KEY,
+            **BASE_PAYLOAD,
             "template_id": settings.TEMPLATE_ID,
         }
     )
     assert second_call == call(
         settings.URL_SEND_EMAIL,
         {
-            "format": "json",
-            "api_key": settings.UNISENDER_API_KEY,
+            **BASE_PAYLOAD,
             "email": email,
             "sender_email": settings.DEFAULT_FROM_EMAIL,
             "sender_name": settings.UNISENDER_SENDER_NAME,
@@ -309,7 +315,7 @@ def test_send_payment_email_bad_template_response(
     """
     mock_unisender_error(first_response)
 
-    send_payment_email("donor@example.com", "1")
+    send_payment_email(EXAMPLE_EMAIL, "1")
 
     assert mock_http_client.post_form.call_count == 1
     mock_http_client.post_form.assert_called_once_with(
@@ -337,7 +343,7 @@ def test_send_payment_email_bad_send_response(
         mock_unisender_mixed: Фикстура, задающая последовательность
             успешного ответа с шаблоном и ответа с ошибкой отправки.
     """
-    email = "donor@example.com"
+    email = EXAMPLE_EMAIL
     list_id = settings.GROUPS[settings.SUBSCRIPTION_CHOICES[0][0]]
 
     mock_unisender_mixed()
