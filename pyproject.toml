@@ -1,3 +1,36 @@
 [tool.pytest.ini_options]
-testpaths = ['tests']
-pythonpath = ['backend']
+testpaths = ["tests"]
+pythonpath = ["backend"]
+
+[tool.mypy]
+python_version = "3.13"
+plugins = [
+    "mypy_django_plugin.main",
+    "mypy_drf_plugin.main",
+]
+
+mypy_path = "backend"
+strict = true
+pretty = true
+show_error_codes = true
+show_column_numbers = true
+exclude = "^backend/.*/migrations/.*$"
+
+[[tool.mypy.overrides]]
+module = "celery.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "faker.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["api.tests", "api.tests.*", "pytest.*", "*.tests", "*.tests.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "*.migrations.*"
+ignore_errors = true
+
+[tool.django-stubs]
+django_settings_module = "donor_base.settings"
