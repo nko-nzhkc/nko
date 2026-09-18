@@ -3,8 +3,6 @@
 from django.conf import settings
 from dotenv import load_dotenv
 
-from donor_base import http_client
-
 load_dotenv()
 
 
@@ -51,6 +49,21 @@ class Client:
         self._config.update(kwargs)
 
     def _api_request(self, method, data):
+        from donor_base import http_client
+
         url = self._get_request_url(method)
         data = self._build_request_data(data, extra_key=None)
         return http_client.post_form(url, data)
+
+    def send_contacts_to_unisender(
+        self, field_names, data, overwrite_lists=0
+    ):
+        """Отправляет контакты в Unisender."""
+        return self._api_request(
+            "import_contacts",
+            {
+                "field_names": field_names,
+                "data": data,
+                "overwrite_lists": overwrite_lists,
+            },
+        )
