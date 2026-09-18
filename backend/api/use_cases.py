@@ -27,9 +27,12 @@ class SyncDonorsToUnisenderUseCase:
         self.repository = repository
         self.client = client
 
-    def execute(self):
+    def execute(self, donor_ids=None, overwrite_lists=1):
         """Отправляет всех доноров пачками, допустимыми Unisender."""
-        donors = self.repository.get_donors()
+        if overwrite_lists not in (0, 1):
+            raise ValueError("overwrite_lists должен быть равен 0 или 1")
+
+        donors = self.repository.get_donors(donor_ids=donor_ids)
 
         for donor_batch in _iter_batches(donors, UNISENDER_BATCH_SIZE):
             self.client.send_contacts_to_unisender(
@@ -38,5 +41,5 @@ class SyncDonorsToUnisenderUseCase:
                     [email, settings.GROUPS[subscription]]
                     for email, subscription in donor_batch
                 ],
-                overwrite_lists=1,
+                overwrite_lists=overwrite_lists,
             )

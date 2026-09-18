@@ -6,9 +6,14 @@ from contacts.models import Donor
 class DonorRepository:
     """Получает доноров для синхронизации."""
 
-    def get_donors(self):
+    def get_donors(self, donor_ids=None):
         """Возвращает email и статус подписки каждого донора."""
-        return Donor.objects.values_list(
+        queryset = Donor.objects.all()
+
+        if donor_ids is not None:
+            queryset = queryset.filter(pk__in=donor_ids)
+
+        return queryset.values_list(
             "email",
             "subscription",
         ).iterator()

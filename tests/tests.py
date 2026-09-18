@@ -8,6 +8,8 @@ import dishka
 import zapros
 from django.conf import settings
 from django.test import SimpleTestCase, TestCase
+from django.db import transaction
+from contacts.models import Donor
 from donor_base import di
 from donor_base.unisender_client import Client
 from faker import Faker
@@ -192,27 +194,122 @@ class AdDonorTest(UnisenderFixtureMixin, TestCase):
         self._override_settings(
             GROUPS={self.subscription: str(self.list_id)}
         )
-        self.expected_request_fields = expected_import_request_fields(
-            email=self.email,
-            list_id=str(self.list_id),
-            api_key=self.api_key,
+
+    @patch("api.utils.send_users_to_unisender")
+    def test_ad_donor_saves_donor_and_publishes_task(
+        self,
+        send_users_to_unisender,
+    ):
+        """ad_donor сохраняет донора и публикует задачу после commit."""
+        with self.captureOnCommitCallbacks(execute=True):
+            ad_donor(self.email, self.subscription)
+
+        donor = Donor.objects.get(email=self.email)
+
+        self.assertEqual(donor.subscription, self.subscription)
+        self.assertEqual(donor.count_declined, 0)
+
+        send_users_to_unisender.si.assert_called_once_with(
+            donor_ids=[donor.pk],
             overwrite_lists=0,
-            format_="json",
         )
-        self.import_mock = self._mock_request(
-            HTTPMethod.POST,
-            settings.IMPORT_UNISENDER,
-            {"result": {"total": 1}},
+        signature = send_users_to_unisender.si.return_value
+        signature.apply_async.assert_called_once_with()
+
+    @patch("api.utils.send_users_to_unisender")
+    def test_ad_donor_uses_overwrite_lists_for_update(
+        self,
+        send_users_to_unisender,
+    ):
+        """При обновлении донора передаётся overwrite_lists=1."""
+        with self.captureOnCommitCallbacks(execute=True):
+            ad_donor(
+                self.email,
+                self.subscription,
+                update=True,
+            )
+
+        donor = Donor.objects.get(email=self.email)
+
+        send_users_to_unisender.si.assert_called_once_with(
+            donor_ids=[donor.pk],
+            overwrite_lists=1,
+        )
+        signature = send_users_to_unisender.si.return_value
+        signature.apply_async.assert_called_once_with()
+
+    @patch("api.utils.send_users_to_unisender")
+    def test_ad_donor_does_not_publish_task_before_commit(
+        self,
+        send_users_to_unisender,
+    ):
+        """Задача не публикуется до commit транзакции."""
+        signature = send_users_to_unisender.si.return_value
+
+        with self.captureOnCommitCallbacks(execute=False) as callbacks:
+            ad_donor(self.email, self.subscription)
+
+            signature.apply_async.assert_not_called()
+
+        self.assertEqual(len(callbacks), 1)
+        signature.apply_async.assert_not_called()
+
+        callbacks[0]()
+
+        signature.apply_async.assert_called_once_with()
+
+    def test_ad_donor_rolls_back_on_transaction_error(self):
+        """При ошибке транзакции донор не сохраняется."""
+        with self.assertRaises(RuntimeError):
+            with transaction.atomic():
+                ad_donor(self.email, self.subscription)
+                raise RuntimeError("rollback")
+
+        self.assertFalse(
+            Donor.objects.filter(email=self.email).exists()
         )
 
-    def test_ad_donor_sends_donor_to_unisender(self):
-        """ad_donor отправляет донора в importContacts."""
-        ad_donor(self.email, self.subscription)
+    @patch("api.utils.chain")
+    @patch("api.utils.send_users_to_unisender")
+    @patch("api.utils.send_payment_email_task")
+    def test_ad_donor_publishes_email_after_unisender(
+        self,
+        send_payment_email_task,
+        send_users_to_unisender,
+        chain_factory,
+    ):
+        """Письмо публикуется после задачи отправки в Unisender."""
+        with self.captureOnCommitCallbacks(execute=True):
+            ad_donor(
+                self.email,
+                self.subscription,
+                send_email=True,
+            )
 
-        self._assert_request_fields(
-            self.import_mock,
-            self.expected_request_fields,
+            chain_factory.return_value.apply_async.assert_not_called()
+
+        donor = Donor.objects.get(email=self.email)
+
+        send_users_to_unisender.si.assert_called_once_with(
+            donor_ids=[donor.pk],
+            overwrite_lists=0,
         )
+        send_payment_email_task.si.assert_called_once_with(
+            email=self.email,
+            list_id=settings.GROUPS[self.subscription],
+        )
+
+        sync_signature = send_users_to_unisender.si.return_value
+        email_signature = send_payment_email_task.si.return_value
+
+        chain_factory.assert_called_once_with(
+            sync_signature,
+            email_signature,
+        )
+        chain_factory.return_value.apply_async.assert_called_once_with()
+
+        sync_signature.apply_async.assert_not_called()
+        email_signature.apply_async.assert_not_called()
 
 
 class SendPaymentEmailTest(UnisenderFixtureMixin, SimpleTestCase):
