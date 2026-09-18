@@ -1,8 +1,21 @@
 from typing import Callable
 
 import pytest
+from django.contrib.auth.models import AbstractUser
+from django.contrib.auth import get_user_model
 from pytest_mock import MockerFixture
 from unittest.mock import MagicMock, Mock, PropertyMock
+
+
+@pytest.fixture
+def admin_user(db: None) -> AbstractUser:
+    """Создаёт суперпользователя для тестов админки."""
+    User = get_user_model()
+    return User.objects.create_superuser(
+        username="admin",
+        email="admin@example.com",
+        password="strong-pass-123",
+    )
 
 
 @pytest.fixture
