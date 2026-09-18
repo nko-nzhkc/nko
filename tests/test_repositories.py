@@ -7,58 +7,42 @@ from contacts.models import Donor
 
 
 @pytest.fixture
-def donors(db, faker):
+def donors(db, faker, settings):
     """Создаёт доноров с разными статусами подписки."""
     return [
         Donor.objects.create(
             email=faker.unique.email(),
             subscription=subscription,
         )
-        for subscription in ("Active", "Inactive")
+        for subscription, _ in settings.SUBSCRIPTION_CHOICES[:2]
     ]
 
 
-def test_get_donors_returns_email_and_subscription(donors):
+@pytest.mark.parametrize(
+    "selection",
+    ["all", "selected", "empty", "missing"],
+)
+def test_get_donors_returns_email_and_subscription(donors, selection):
     """Репозиторий возвращает данные, нужные use case."""
-    actual = list(DonorRepository().get_donors())
+    if selection == "all":
+        donor_ids = None
+        expected_donors = donors
+    elif selection == "selected":
+        donor_ids = [donors[0].pk]
+        expected_donors = donors[:1]
+    elif selection == "empty":
+        donor_ids = []
+        expected_donors = []
+    else:
+        donor_ids = [max(donor.pk for donor in donors) + 1]
+        expected_donors = []
+
+    actual = list(
+        DonorRepository().get_donors(donor_ids=donor_ids)
+    )
     expected = [
         (donor.email, donor.subscription)
-        for donor in donors
+        for donor in expected_donors
     ]
 
     assert sorted(actual) == sorted(expected)
-
-
-def test_get_donors_returns_only_selected_donor(donors):
-    """Событие одного донора не выбирает остальных."""
-    selected = donors[0]
-
-    result = list(
-        DonorRepository().get_donors(
-            donor_ids=[selected.pk],
-        )
-    )
-
-    assert result == [(selected.email, selected.subscription)]
-
-
-def test_get_donors_with_empty_ids_returns_nothing(donors):
-    """Пустой список не превращается в полную синхронизацию."""
-    result = list(
-        DonorRepository().get_donors(donor_ids=[])
-    )
-
-    assert result == []
-
-
-def test_get_donors_with_missing_id_returns_nothing(donors):
-    """Отсутствующий донор не приводит к отправке других."""
-    missing_id = max(donor.pk for donor in donors) + 1
-
-    result = list(
-        DonorRepository().get_donors(
-            donor_ids=[missing_id],
-        )
-    )
-
-    assert result == []

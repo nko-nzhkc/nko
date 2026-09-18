@@ -12,6 +12,8 @@ from api.tasks import (
     send_payment_email_task,
     send_users_to_unisender,
 )
+from api.use_cases import UNISENDER_FIELD_NAMES
+from contacts.models import Donor
 
 
 @pytest.fixture(autouse=True)
@@ -27,24 +29,24 @@ def task_retry():
 
 
 @pytest.fixture
-def use_case_class():
-    """Изолирует задачу от выполнения сценария и обращения к БД."""
-    with patch("api.tasks.SyncDonorsToUnisenderUseCase") as factory:
-        yield factory
-
-
-@pytest.fixture
-def repository_class():
-    """Подменяет создание репозитория в задаче."""
-    with patch("api.tasks.DonorRepository") as factory:
-        yield factory
+def donors(db, faker, settings):
+    """Создаёт доноров для выполнения реального сценария."""
+    return [
+        Donor.objects.create(
+            email=faker.unique.email(),
+            subscription=subscription,
+        )
+        for subscription, _ in settings.SUBSCRIPTION_CHOICES[:2]
+    ]
 
 
 @pytest.fixture(autouse=True)
-def get_unisender_client():
-    """Изолирует unit-тесты задачи от DI-контейнера приложения."""
-    with patch("api.tasks.di.get_unisender_client") as get_client:
-        yield get_client
+def api_request():
+    """Изолирует отправку запроса во внешний Unisender."""
+    with patch(
+        "donor_base.unisender_client.Client._api_request"
+    ) as request:
+        yield request
 
 
 @pytest.mark.parametrize(
@@ -60,9 +62,14 @@ def get_unisender_client():
     ],
     ids=["base", "connection", "timeout", "read", "write", "400", "503"],
 )
-def test_retries_zapros_errors(error, use_case_class, task_retry):
+def test_retries_zapros_errors(
+    error,
+    donors,
+    api_request,
+    task_retry,
+):
     """Любое исключение zapros приводит к Celery retry."""
-    use_case_class.return_value.execute.side_effect = error
+    api_request.side_effect = error
 
     with pytest.raises(Retry):
         send_users_to_unisender.run()
@@ -72,45 +79,56 @@ def test_retries_zapros_errors(error, use_case_class, task_retry):
 
 
 @pytest.mark.parametrize(
-    "task_kwargs, expected_kwargs",
+    "selection, overwrite_lists",
     [
-        (
-            {},
-            {"donor_ids": None, "overwrite_lists": 1},
-        ),
-        (
-            {"donor_ids": [10], "overwrite_lists": 0},
-            {"donor_ids": [10], "overwrite_lists": 0},
-        ),
+        ("all", 1),
+        ("selected", 0),
     ],
 )
 def test_executes_use_case(
-    task_kwargs,
-    expected_kwargs,
-    use_case_class,
-    repository_class,
-    get_unisender_client,
+    selection,
+    overwrite_lists,
+    donors,
+    settings,
+    api_request,
     task_retry,
 ):
     """Задача передаёт клиент из DI и выполняет сценарий."""
-    send_users_to_unisender.run(**task_kwargs)
+    if selection == "all":
+        selected = donors
+        send_users_to_unisender.run()
+    else:
+        selected = donors[:1]
+        send_users_to_unisender.run(
+            donor_ids=[selected[0].pk],
+            overwrite_lists=overwrite_lists,
+        )
 
-    repository_class.assert_called_once_with()
-    get_unisender_client.assert_called_once_with()
-    use_case_class.assert_called_once_with(
-        repository=repository_class.return_value,
-        client=get_unisender_client.return_value,
+    api_request.assert_called_once()
+    method, payload = api_request.call_args.args
+
+    assert method == "import_contacts"
+    assert payload["field_names"] == UNISENDER_FIELD_NAMES
+    assert payload["overwrite_lists"] == overwrite_lists
+    assert sorted(payload["data"]) == sorted(
+        [
+            donor.email,
+            settings.GROUPS[donor.subscription],
+        ]
+        for donor in selected
     )
-    use_case_class.return_value.execute.assert_called_once_with(
-        **expected_kwargs,
-    )
+
     task_retry.assert_not_called()
 
 
-def test_does_not_retry_unrelated_error(use_case_class, task_retry):
+def test_does_not_retry_unrelated_error(
+    donors,
+    api_request,
+    task_retry,
+):
     """Ошибка вне иерархии zapros не приводит к retry."""
     error = ValueError("Invalid data")
-    use_case_class.return_value.execute.side_effect = error
+    api_request.side_effect = error
 
     with pytest.raises(ValueError) as caught:
         send_users_to_unisender.run()
@@ -135,18 +153,22 @@ def test_retry_configuration():
 def test_import_failure_does_not_send_email(
     error,
     expected_exception,
-    use_case_class,
+    donors,
+    settings,
+    api_request,
 ):
     """Retry или ошибка импорта не запускает следующую задачу."""
-    use_case_class.return_value.execute.side_effect = error
+    api_request.side_effect = error
+    donor = donors[0]
+
     workflow = chain(
         send_users_to_unisender.si(
-            donor_ids=[10],
+            donor_ids=[donor.pk],
             overwrite_lists=1,
         ),
         send_payment_email_task.si(
-            email="donor@example.com",
-            list_id="5",
+            email=donor.email,
+            list_id=settings.GROUPS[donor.subscription],
         ),
     )
 
