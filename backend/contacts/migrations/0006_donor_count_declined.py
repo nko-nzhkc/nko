@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('contacts', '0005_rename_subcsription_donor_subscription'),
+        ("contacts", "0005_rename_subcsription_donor_subscription"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='donor',
-            name='count_declined',
-            field=models.PositiveSmallIntegerField(default=0, verbose_name='Счётчик неудачных платежей'),
+            model_name="donor",
+            name="count_declined",
+            field=models.PositiveSmallIntegerField(
+                default=0, verbose_name="Счётчик неудачных платежей"
+            ),
         ),
     ]

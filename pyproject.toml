@@ -1,3 +1,45 @@
+[project]
+name = "nko-backend"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Your Name", email = "you@example.com"}
+]
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "amqp (>=5.3,<6.0)",
+    "celery (>=5.6,<6.0)",
+    "django (>=5,<6)",
+    "django-cors-headers (>=4.9,<5.0)",
+    "djangorestframework (>=3.18,<4.0)",
+    "python-dotenv (>=1.2,<2.0)",
+    "requests (>=2.34,<3.0)",
+    "whitenoise (>=6.12,<7.0)",
+    "psycopg2-binary (>=2.9,<3.0)",
+    "filelock (>=3.32,<4.0)",
+    "dishka (>=1.10.1,<2.0.0)",
+    "zapros (>=0.17.0,<0.18.0)",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit (>=4.6,<5.0)",
+    "pytest (>=9.1,<10.0)",
+    "pytest-django (>=4.14,<5.0)",
+    "flake8 (>=7,<8)",
+    "faker (>=40.39.0,<41.0.0)",
+]
+production = [
+    "gunicorn (>=21.0,<22.0)",
+]
+
+[tool.poetry]
+package-mode = false
+
+[build-system]
+requires = ["poetry-core>=2.0,<3.0"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.pytest.ini_options]
 testpaths = ['tests']
 pythonpath = ['backend']

@@ -2,12 +2,18 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-RUN pip install gunicorn==21.0.1
+RUN apt-get update && apt-get install -y curl
 
-COPY requirements.txt .
+RUN curl -sSL https://install.python-poetry.org | python3 -
 
-RUN pip install -r requirements.txt --no-cache-dir
+ENV PATH="/root/.local/bin:$PATH"
 
-COPY . .
+COPY pyproject.toml .
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--access-logfile" , "-", "donor_base.wsgi"]
+COPY poetry.lock .
+
+RUN poetry install --without dev
+
+COPY backend/ .
+
+CMD ["poetry", "run", "gunicorn", "--bind", "0.0.0.0:8000", "--access-logfile" , "-", "donor_base.wsgi"]

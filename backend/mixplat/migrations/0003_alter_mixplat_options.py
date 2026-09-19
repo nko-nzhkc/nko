@@ -4,14 +4,17 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('mixplat', '0002_alter_mixplat_donat'),
+        ("mixplat", "0002_alter_mixplat_donat"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='mixplat',
-            options={'ordering': ('-pub_date', 'status'), 'verbose_name': 'Платеж Mixplat', 'verbose_name_plural': 'Платежи Mixplat'},
+            name="mixplat",
+            options={
+                "ordering": ("-pub_date", "status"),
+                "verbose_name": "Платеж Mixplat",
+                "verbose_name_plural": "Платежи Mixplat",
+            },
         ),
     ]
