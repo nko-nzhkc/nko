@@ -4,11 +4,23 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y curl
 
+<<<<<<< HEAD
 RUN curl -sSL https://install.python-poetry.org | python3 -
+=======
+COPY backend/requirements.txt .
+>>>>>>> main
 
 ENV PATH="/root/.local/bin:$PATH"
 
+<<<<<<< HEAD
 COPY pyproject.toml .
+=======
+COPY backend/ ./
+
+COPY tests/ ./tests/
+
+COPY pytest.ini .
+>>>>>>> main
 
 COPY poetry.lock .
 

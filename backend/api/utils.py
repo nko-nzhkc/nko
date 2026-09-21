@@ -7,8 +7,11 @@ import os
 import shutil
 from datetime import datetime
 from http import HTTPMethod, HTTPStatus
+from functools import partial
+from django.db import transaction
 
 import zapros
+from celery import chain
 from django.conf import settings
 from django.db.models import F
 from django.utils.timezone import make_aware
@@ -18,6 +21,10 @@ from rest_framework.response import Response
 from contacts.models import Donor
 from donor_base import http_client
 from mixplat.models import MixPlat
+from api.tasks import (
+    send_payment_email_task,
+    send_users_to_unisender,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,22 +43,40 @@ def donor_exists(email):
     return Donor.objects.filter(email=email).exists()
 
 
-def ad_donor(donor, subscription, update=False):
-    """Добавляет email донора в указанную группу в БД и в unisender."""
-    Donor.objects.update_or_create(
-        email=donor,
-        defaults={"subscription": subscription, "count_declined": 0},
-    )
-    data = {
-        "format": "json",
-        "api_key": settings.UNISENDER_API_KEY,
-        "overwrite_lists": 1 if update else 0,
-        "field_names[0]": "email",
-        "field_names[1]": "email_list_ids",
-        "data[0][0]": donor,
-        "data[0][1]": settings.GROUPS[subscription],
-    }
-    http_client.post_form(settings.IMPORT_UNISENDER, data)
+def ad_donor(
+    donor,
+    subscription,
+    update=False,
+    *,
+    send_email=False,
+):
+    """Сохраняет донора и планирует импорт, затем при необходимости письмо."""
+    with transaction.atomic():
+        donor_obj, _ = Donor.objects.update_or_create(
+            email=donor,
+            defaults={
+                "subscription": subscription,
+                "count_declined": 0,
+            },
+        )
+
+        workflow = send_users_to_unisender.si(
+            donor_ids=[donor_obj.pk],
+            overwrite_lists=1 if update else 0,
+        )
+
+        if send_email:
+            workflow = chain(
+                workflow,
+                send_payment_email_task.si(
+                    email=donor_obj.email,
+                    list_id=settings.GROUPS[subscription],
+                ),
+            )
+
+        transaction.on_commit(
+            partial(workflow.apply_async)
+        )
 
 
 def mixplat_request_handler(request):
@@ -149,11 +174,7 @@ def create_or_update_donor(data, subscription):
             ad_donor(
                 data["email"],
                 settings.SUBSCRIPTION_CHOICES[0][0],
-            )
-            # Отправляем донору письмо
-            send_payment_email(
-                data["email"],
-                settings.GROUPS[settings.SUBSCRIPTION_CHOICES[0][0]],
+                send_email=True,
             )
             logger.info(
                 f"Создан Донор {data['email']} "
@@ -172,7 +193,7 @@ def create_or_update_donor(data, subscription):
                     ad_donor(
                         data["email"],
                         settings.SUBSCRIPTION_CHOICES[2][0],
-                        "update",
+                        update=True,
                     )
                     logger.info(
                         f"У Донора {data['email']} обновлен статус "
@@ -192,12 +213,8 @@ def create_or_update_donor(data, subscription):
                     ad_donor(
                         data["email"],
                         settings.SUBSCRIPTION_CHOICES[0][0],
-                        "update",
-                    )
-                    # Отправляем донору письмо
-                    send_payment_email(
-                        data["email"],
-                        settings.GROUPS[settings.SUBSCRIPTION_CHOICES[0][0]],
+                        update=True,
+                        send_email=True,
                     )
                     logger.info(
                         f"У Донора {data['email']} обновлен статус "

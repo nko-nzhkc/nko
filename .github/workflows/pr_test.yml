@@ -28,7 +28,7 @@ jobs:
 
       - name: Test with flake8
         run: |
-          poetry run flake8 --exclude=*/migrations/* backend/
+          poetry run flake8 --exclude=*/migrations/* backend/ tests/
 
       - name: Check migrations
         run: |
