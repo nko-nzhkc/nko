@@ -10,14 +10,16 @@ import pytest
 from django.conf import settings
 from django.test import SimpleTestCase
 from django.db import transaction
-from backend.contacts.models import Donor
-from backend.donor_base import di
-from backend.donor_base.unisender_client import Client
+from contacts.models import Donor  # type: ignore
+from donor_base import di  # type: ignore
+from donor_base.unisender_client import Client  # type: ignore
 from faker import Faker
 from zapros.matchers import path
 from zapros.mock import Mock, MockMiddleware, MockRouter
 
-from backend.api.utils import ad_donor, send_payment_email, send_request
+from api.utils import (    # type: ignore
+    ad_donor, send_payment_email, send_request
+)
 
 CONTACT_FIELDS = ["email", "email_list_ids"]
 

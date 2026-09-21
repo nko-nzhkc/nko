@@ -39,7 +39,3 @@ package-mode = false
 [build-system]
 requires = ["poetry-core>=2.0,<3.0"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.pytest.ini_options]
-testpaths = ['tests']
-pythonpath = ['backend']
