@@ -1,14 +1,12 @@
-version: '3.8'
-
 volumes:
   pg_data:
 
 services:
   db:
-    image: postgres:13.10
+    image: postgres:18
     env_file: .env
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql
     restart: always
     ports:
       - 5432:5432
@@ -21,7 +19,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: ./backend/Dockerfile
     env_file: .env
     depends_on:
       db:
