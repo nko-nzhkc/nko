@@ -13,6 +13,8 @@ from django.db import transaction
 from contacts.models import Donor
 from donor_base import di
 from donor_base.unisender_client import Client
+from donor_base.constants import SubscriptionStatuses
+from donor_base.subscriptions import get_group_by_capitalized
 from faker import Faker
 from zapros.matchers import path
 from zapros.mock import Mock, MockMiddleware, MockRouter
@@ -107,6 +109,18 @@ class UnisenderFixtureMixin:
             },
         )
 
+    def _assert_last_request_fields(self, mock, expected_fields):
+        """
+        Проверяет поля последнего исходящего запроса.
+
+        Аналог _assert_request_fields для тестов с subTest.
+        """
+        self.assertTrue(mock.called)
+        self.assertEqual(
+            self._parse_request_fields(mock.calls[-1]),
+            {key: str(value) for key, value in expected_fields.items()},
+        )
+
     def _parse_request_fields(self, request):
         """Разбирает поля тела исходящего form-urlencoded запроса."""
         body = request.body.decode("utf-8")
@@ -185,13 +199,10 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
 
 
 @pytest.fixture
-def ad_donor_data(db, faker, settings):
+def ad_donor_data(db, faker):
     """Настраивает данные для проверки сохранения и workflow."""
-    subscription = settings.SUBSCRIPTION_CHOICES[0][0]
-    list_id = str(faker.random_int(min=1))
-    settings.GROUPS = {subscription: list_id}
 
-    return faker.unique.email(), subscription
+    return faker.unique.email(), SubscriptionStatuses.ACTIVE.capitalized
 
 
 @pytest.fixture
@@ -322,7 +333,6 @@ def test_ad_donor_publishes_email_after_unisender(
     sync_task,
     email_task,
     chain_factory,
-    settings,
     django_capture_on_commit_callbacks,
 ):
     """Письмо публикуется после задачи отправки в Unisender."""
@@ -345,7 +355,7 @@ def test_ad_donor_publishes_email_after_unisender(
     )
     email_task.si.assert_called_once_with(
         email=email,
-        list_id=settings.GROUPS[subscription],
+        list_id=get_group_by_capitalized(subscription),
     )
 
     sync_signature = sync_task.si.return_value

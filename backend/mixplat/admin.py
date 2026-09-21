@@ -1,8 +1,8 @@
 # Модуль админки модели платежа Mixplat.
-from django.conf import settings
 from django.contrib import admin
 
 from .models import MixPlat
+from donor_base.constants import EMPTY_VALUE
 
 
 @admin.register(MixPlat)
@@ -24,5 +24,5 @@ class DonationAdmin(admin.ModelAdmin):
         "date_processed",
         "payment_operator",
     )
-    empty_value_display = settings.EMPTY_VALUE
+    empty_value_display = EMPTY_VALUE
     list_filter = ("pub_date", "status")

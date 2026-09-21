@@ -14,6 +14,8 @@ from api.tasks import (
 )
 from api.use_cases import UNISENDER_FIELD_NAMES
 from contacts.models import Donor
+from donor_base.constants import SubscriptionStatuses
+from donor_base.subscriptions import get_group_by_capitalized
 
 
 @pytest.fixture(autouse=True)
@@ -29,14 +31,17 @@ def task_retry():
 
 
 @pytest.fixture
-def donors(db, faker, settings):
+def donors(db, faker):
     """Создаёт доноров для выполнения реального сценария."""
     return [
         Donor.objects.create(
             email=faker.unique.email(),
             subscription=subscription,
         )
-        for subscription, _ in settings.SUBSCRIPTION_CHOICES[:2]
+        for subscription in (
+            SubscriptionStatuses.ACTIVE.capitalized,
+            SubscriptionStatuses.INACTIVE.capitalized
+        )
     ]
 
 
@@ -89,7 +94,6 @@ def test_executes_use_case(
     selection,
     overwrite_lists,
     donors,
-    settings,
     api_request,
     task_retry,
 ):
@@ -113,7 +117,7 @@ def test_executes_use_case(
     assert sorted(payload["data"]) == sorted(
         [
             donor.email,
-            settings.GROUPS[donor.subscription],
+            get_group_by_capitalized(donor.subscription),
         ]
         for donor in selected
     )
@@ -154,7 +158,6 @@ def test_import_failure_does_not_send_email(
     error,
     expected_exception,
     donors,
-    settings,
     api_request,
 ):
     """Retry или ошибка импорта не запускает следующую задачу."""
@@ -168,7 +171,7 @@ def test_import_failure_does_not_send_email(
         ),
         send_payment_email_task.si(
             email=donor.email,
-            list_id=settings.GROUPS[donor.subscription],
+            list_id=get_group_by_capitalized(donor.subscription),
         ),
     )
 

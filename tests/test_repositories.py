@@ -4,17 +4,21 @@ import pytest
 
 from api.repositories import DonorRepository
 from contacts.models import Donor
+from donor_base.constants import SubscriptionStatuses
 
 
 @pytest.fixture
-def donors(db, faker, settings):
+def donors(db, faker):
     """Создаёт доноров с разными статусами подписки."""
     return [
         Donor.objects.create(
             email=faker.unique.email(),
             subscription=subscription,
         )
-        for subscription, _ in settings.SUBSCRIPTION_CHOICES[:2]
+        for subscription in (
+            SubscriptionStatuses.ACTIVE.capitalized,
+            SubscriptionStatuses.INACTIVE.capitalized
+        )
     ]
 
 

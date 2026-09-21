@@ -12,14 +12,16 @@ from api.use_cases import (
 )
 from contacts.models import Donor
 from donor_base import di
+from donor_base.constants import SubscriptionStatuses
+from donor_base.subscriptions import get_group_by_capitalized
 
 
 @pytest.fixture
-def donor_factory(db, faker, settings):
+def donor_factory(db, faker):
     """Создаёт реальные записи доноров для сценария."""
 
     def create(count):
-        subscription = settings.SUBSCRIPTION_CHOICES[0][0]
+        subscription = SubscriptionStatuses.ACTIVE.capitalized
         return Donor.objects.bulk_create([
             Donor(
                 email=faker.unique.email(),
@@ -53,7 +55,6 @@ def test_execute_sends_exactly_one_batch_of_500_donors(
     donor_factory,
     use_case,
     api_request,
-    settings,
 ):
     """500 доноров отправляются одним вызовом importContacts."""
     donors = donor_factory(UNISENDER_BATCH_SIZE)
@@ -69,7 +70,7 @@ def test_execute_sends_exactly_one_batch_of_500_donors(
     assert sorted(payload["data"]) == sorted(
         [
             donor.email,
-            settings.GROUPS[donor.subscription],
+            get_group_by_capitalized(donor.subscription),
         ]
         for donor in donors
     )
@@ -79,7 +80,6 @@ def test_execute_splits_501_donors_into_two_batches(
     donor_factory,
     use_case,
     api_request,
-    settings,
 ):
     """501 донор разделяется на пачки 500 и 1."""
     donors = donor_factory(UNISENDER_BATCH_SIZE + 1)
@@ -107,7 +107,7 @@ def test_execute_splits_501_donors_into_two_batches(
         for row in payload["data"]
     ]
     expected = [
-        [donor.email, settings.GROUPS[donor.subscription]]
+        [donor.email, get_group_by_capitalized(donor.subscription)]
         for donor in donors
     ]
 
@@ -119,8 +119,7 @@ def test_execute_passes_filter_and_overwrite_lists(
     overwrite_lists,
     donor_factory,
     use_case,
-    api_request,
-    settings,
+    api_request
 ):
     """Сценарий передаёт фильтр и сохраняет режим обновления."""
     donors = donor_factory(2)
@@ -137,7 +136,7 @@ def test_execute_passes_filter_and_overwrite_lists(
             "field_names": UNISENDER_FIELD_NAMES,
             "data": [[
                 selected.email,
-                settings.GROUPS[selected.subscription],
+                get_group_by_capitalized(selected.subscription),
             ]],
             "overwrite_lists": overwrite_lists,
         },

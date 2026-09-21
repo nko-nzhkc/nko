@@ -2,7 +2,7 @@
 
 from itertools import islice
 
-from django.conf import settings
+from donor_base.subscriptions import get_group_by_capitalized
 
 
 UNISENDER_BATCH_SIZE = 500
@@ -38,7 +38,7 @@ class SyncDonorsToUnisenderUseCase:
             self.client.send_contacts_to_unisender(
                 field_names=UNISENDER_FIELD_NAMES,
                 data=[
-                    [email, settings.GROUPS[subscription]]
+                    [email, get_group_by_capitalized(subscription)]
                     for email, subscription in donor_batch
                 ],
                 overwrite_lists=overwrite_lists,
