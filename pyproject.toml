@@ -3,7 +3,7 @@ name = "nko-backend"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Your Name", email = "you@example.com"}
+    {name = "Marat Kabardokov", email = "kabardokov.m@yandex.ru"}
 ]
 requires-python = ">=3.13,<3.14"
 dependencies = [
@@ -28,6 +28,7 @@ dev = [
     "pytest-django (>=4.14,<5.0)",
     "flake8 (>=7,<8)",
     "faker (>=40.39.0,<41.0.0)",
+    "flake8-pyproject (>=1.2.4,<2.0.0)",
 ]
 production = [
     "gunicorn (>=21.0,<22.0)",

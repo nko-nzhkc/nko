@@ -29,7 +29,7 @@ jobs:
 
       - name: Test with flake8
         run: |
-          poetry run flake8 --exclude=*/migrations/* backend/
+          poetry run flake8 backend/
 
   build_backend_and_push_to_docker_hub:
     name: Push backend Docker image to DockerHub
@@ -53,7 +53,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./backend/Dockerfile
+          file: ./backend/Dockerfile  # TODO: Заменить креды
           push: true
           tags: amadeus161/crisis-center_backend:latest
 
