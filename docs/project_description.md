@@ -27,9 +27,9 @@ F --> G{Вызов create_or_update_donor. Донор существует в б
 
 G --> |Нет| G1
     G1{Какой subscription}
-    G1 -->|Inactive| G1a("`Вызов ad_donor. Создание Donor со статусом Inactive и добавление донора в Unisender путем отправки POST на IMPORT_UNISENDER (вероятно https://api.unisender.com/ru/api/importContacts)`")
+    G1 -->|Inactive| G1a("`Вызов ad_donor. Создание Donor со статусом Inactive и асинхронная отправка данных донора в Unisender через Celery-задачу send_users_to_unisender`")
         G1a --> H("Завершение create_or_update_donor")
-    G1 -->|Active| G1b(Вызов ad_donor. Создание Donor со статусом Active и добавление донора в Unisender путем отправки POST на IMPORT_UNISENDER)
+    G1 -->|Active| G1b(Вызов ad_donor. Создание Donor со статусом Active и асинхронная отправка данных донора в Unisender через Celery-задачу send_users_to_unisender)
         G1b --> G1c(Вызов send_payment_email. Запрос шаблона от Unisender и отправка письма донору по шаблону. Диаграмма обработки ниже.)
             G1c --> H
 
@@ -41,7 +41,7 @@ G -->|Да| G2
             G2c --> H
         G2a -->|Да| G2d
             G2d{"Счетчик отказов достигнет лимита, если добавить еще 1 отказ?"}
-            G2d -->|Да| G2e("`Вызов ad_donor. Изменение статуса донора в БД на Lost, изменение листа донора в Unisender путем отправки POST на IMPORT_UNISENDER.<br>**NB:ad_donor обнуляет count_declined**`")
+            G2d -->|Да| G2e("`Вызов ad_donor. Изменение статуса донора в БД на Lost и асинхронное обновление данных донора в Unisender через Celery-задачу send_users_to_unisender.<br>**NB: ad_donor обнуляет count_declined**`")
                 G2e --> H
             G2d -->|Нет| G2f(Внутри create_or_update_donor запрос к БД на изменение объекта Donor, отфильтрованного по email, c изменением count_declined на плюс один)
                 G2f --> H
@@ -49,7 +49,7 @@ G -->|Да| G2
         G2b{"subscription из платежа равен Active?"}
         G2b -->|Да| G2g
             G2g{"subscription в базе данных в Lost или Inactive?"}
-            G2g -->|Да| G2h("`Вызов ad_donor. Изменение статуса донора в БД на Active, изменение листа донора в Unisender путем отправки POST на IMPORT_UNISENDER<br>**NB:ad_donor обнуляет count_declined**`")
+            G2g -->|Да| G2h("`Вызов ad_donor. Изменение статуса донора в БД на Active и асинхронное обновление данных донора в Unisender через Celery-задачу send_users_to_unisender.<br>**NB: ad_donor обнуляет count_declined**`")
                 G2h --> G2i(Вызов send_payment_email. Запрос шаблона от Unisender и отправка письма донору по шаблону. Диаграмма обработки ниже.)
                     G2i --> H
             G2g -->|Нет| G2j(Внутри create_or_update_donor запрос к БД на изменение объекта Donor, отфильтрованного по email, cо сбросом count_declined)

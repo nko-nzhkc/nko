@@ -17,38 +17,34 @@ https://thelinuxcode.com/run-makefile-windows/
 Для минимизации трудностей во время разработки и поддержании высокого качества кода в разработке мы используем 
 `pre-commit`. Данный фреймворк позволяет проверить код на соответствие `PEP8`, защитить ветки main и develop от 
 непреднамеренного коммита, проверить корректность импортов и наличие trailing spaces.
-`Pre-commit` конфигурируется с помощью специального файл `.pre-commit-config.yaml`. Для использования фреймворка его 
-необходимо установить, выполнив команду из активированного виртуального окружения:
+`Pre-commit` конфигурируется с помощью специального файл `.pre-commit-config.yaml`. Для использования фреймворка необходимо установить зависимости проекта с помощью Poetry:
 
 ```bash
-(venv)$ pip install pre-commit
+poetry install
 ```
-или 
 
-```bash
-(venv)$ pip install -r requirements-dev.txt
-```
 Для принудительной проверки всех файлов можно выполнить команду:
 ```bash
-(venv)$ pre-commit run --all-files
+poetry run pre-commit run --all-files
 ```
+
 При первом запуске будут скачаны и установлены все необходимые хуки, указанные в конфигурационном файле.
 
 Для автоматической проверки всех файлов необходимо инициализировать фреймворк командой:
 ```bash
-(venv)$ pre-commit install
+poetry run pre-commit install
 ```
 
 ### Celery
 В проекте Celery работает вместе c RabbitMQ, который запускается отдельно в контейнере Docker.
 
-Celery включен в индекс пакетов Python (PyPI), поэтому его можно установить с помощью стандартных инструментов Python,
-таких как pip:
+Celery является зависимостью проекта и устанавливается вместе с остальными зависимостями с помощью Poetry:
 
 ```bash
-(venv)$ pip install celery
+poetry install
 ```
 
+Для локального запуска RabbitMQ необходимо запустить соответствующий Docker-контейнер.
 В проекте реализовано логирование задач Celery в отдельный файл celery.log, на уровне INFO.
 
 ### RabbitMQ 
@@ -198,28 +194,11 @@ DEFAULT_CONF = {
 аккаунта.
 
 Подпапка проекта donor_base это базовая директория нашего проекта. В ней в файле unisender_client.py расположен клиент 
-для низкоуровнего доступа к Unisender API. Существующая интеграция реализует метод «import_contacts»:
-```python
-cl = Client(
-    api_key=os.getenv("UNISENDER_API_KEY"),
-    platform="donor_base",
-)
-method = "import_contacts"
-data_unisender = {
-    "field_names": ["email", "Name", "email_list_ids"],
-    "data": [],
-    "overwrite_lists": 1,
-}
-```
-Источник импорта контактов модель Contact приложения contacts:
-```python
-cont = Contact.objects.all()
-data = []
-for x in cont:
-    donor_contact = [x.email, x.username, "Oldest_donors"]
-    data.append(donor_contact)
-data_unisender["data"] = data
-```
+для низкоуровнего доступа к Unisender API. Отправка данных доноров в Unisender выполняется асинхронно через Celery-задачу `send_users_to_unisender`.
+
+Для подготовки и отправки данных используется `SyncDonorsToUnisenderUseCase`. Данные доноров получает репозиторий, после чего use case отправляет их в Unisender пачками не более 500 контактов.
+
+При создании или изменении донора `ad_donor` ставит задачу отправки в очередь только после успешного сохранения транзакции в БД.
 [Другие методы Unisender API](https://www.unisender.com/ru/support/api/api)
 
 ### Логирование в проекте

@@ -86,9 +86,7 @@ class UnisenderFixtureMixin:
         overridden.enable()
         self.addCleanup(overridden.disable)
 
-    def _mock_request(
-        self, method, url, response_data, status=HTTPStatus.OK
-    ):
+    def _mock_request(self, method, url, response_data, status=HTTPStatus.OK):
         """Регистрирует в роутере ответ на запрос method по url."""
         parsed = urlsplit(url)
         matcher = path(parsed.path).method(method).host(parsed.hostname)
@@ -103,10 +101,7 @@ class UnisenderFixtureMixin:
         mock.assert_called_once()
         self.assertEqual(
             self._parse_request_fields(mock.calls[0]),
-            {
-                key: str(value)
-                for key, value in expected_fields.items()
-            },
+            {key: str(value) for key, value in expected_fields.items()},
         )
 
     def _assert_last_request_fields(self, mock, expected_fields):
@@ -125,10 +120,7 @@ class UnisenderFixtureMixin:
         """Разбирает поля тела исходящего form-urlencoded запроса."""
         body = request.body.decode("utf-8")
         fields = parse_qs(body, keep_blank_values=True)
-        return {
-            key: values[0]
-            for key, values in fields.items()
-        }
+        return {key: values[0] for key, values in fields.items()}
 
 
 class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
@@ -173,9 +165,7 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
 
     def test_api_request_posts_form_to_unisender(self):
         """_api_request отправляет данные в Unisender и возвращает ответ."""
-        response = self.unisender._api_request(
-            "import_contacts", self.payload
-        )
+        response = self.unisender._api_request("import_contacts", self.payload)
 
         self.assertEqual(response.status, HTTPStatus.OK)
         self.assertEqual(response.json, {"result": {"total": 1}})

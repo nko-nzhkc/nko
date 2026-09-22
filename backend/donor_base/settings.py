@@ -146,9 +146,7 @@ CELERY_TASK_TRACK_STARTED = True
 
 CELERY_TASK_TIME_LIMIT = 30 * 60
 
-CELERY_BEAT_SCHEDULE = {
-
-}
+CELERY_BEAT_SCHEDULE = {}
 
 # Константы проекта
 
@@ -169,7 +167,6 @@ DEFAULT_CONF = {
 }
 
 EXPORT_UNISENDER = "https://api.unisender.com/ru/api/async/exportContacts"
-IMPORT_UNISENDER = "https://api.unisender.com/ru/api/importContacts"
 UNISENDER_API_KEY = os.getenv("UNISENDER_API_KEY")
 NOTIFY_URL = "https://foodgrampyengineer.ru/api/contacts/get_contacts/"
 URL_SEND_EMAIL = "https://api.unisender.com/ru/api/sendEmail"
