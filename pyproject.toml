@@ -105,6 +105,14 @@ target-version = "py313"
 line-length = 80
 preview = true
 fix = true
+exclude = [
+  "*/migrations/*",
+  "docs",
+  "backend/static",
+  "media",
+  ".venv",
+  ".vscode",
+]
 
 [tool.ruff.format]
 quote-style = "double"
