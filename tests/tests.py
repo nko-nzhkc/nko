@@ -98,10 +98,9 @@ class UnisenderFixtureMixin:
     def _assert_request_fields(self, mock, expected_fields):
         """Проверяет поля тела исходящего form-urlencoded запроса."""
         mock.assert_called_once()
-        self.assertEqual(
-            self._parse_request_fields(mock.calls[0]),
-            {key: str(value) for key, value in expected_fields.items()},
-        )
+        assert self._parse_request_fields(mock.calls[0]) == {
+            key: str(value) for key, value in expected_fields.items()
+        }
 
     def _assert_last_request_fields(self, mock, expected_fields):
         """
@@ -109,11 +108,10 @@ class UnisenderFixtureMixin:
 
         Аналог _assert_request_fields для тестов с subTest.
         """
-        self.assertTrue(mock.called)
-        self.assertEqual(
-            self._parse_request_fields(mock.calls[-1]),
-            {key: str(value) for key, value in expected_fields.items()},
-        )
+        assert mock.called
+        assert self._parse_request_fields(mock.calls[-1]) == {
+            key: str(value) for key, value in expected_fields.items()
+        }
 
     def _parse_request_fields(self, request):
         """Разбирает поля тела исходящего form-urlencoded запроса."""
@@ -149,25 +147,25 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
         )
         self.import_mock = self._mock_request(
             HTTPMethod.POST,
+            # ruff: ignore[private-member-access]
             self.unisender._get_request_url("import_contacts"),
             {"result": {"total": 1}},
         )
 
     def test_build_request_data_flattens_payload(self):
         """Вложенный payload разворачивается в плоские поля."""
+        # ruff: ignore[private-member-access]
         request_fields = self.unisender._build_request_data(self.payload)
 
-        self.assertEqual(
-            request_fields,
-            self.expected_request_fields,
-        )
+        assert request_fields == self.expected_request_fields
 
     def test_api_request_posts_form_to_unisender(self):
         """_api_request отправляет данные в Unisender и возвращает ответ."""
+        # ruff: ignore[private-member-access]
         response = self.unisender._api_request("import_contacts", self.payload)
 
-        self.assertEqual(response.status, HTTPStatus.OK)
-        self.assertEqual(response.json, {"result": {"total": 1}})
+        assert response.status == HTTPStatus.OK
+        assert response.json == {"result": {"total": 1}}
         self._assert_request_fields(
             self.import_mock,
             self.expected_request_fields,
@@ -175,6 +173,7 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
 
     def test_api_request_raises_on_error_status(self):
         """Ненормативный статус Unisender приводит к StatusCodeError."""
+        # ruff: ignore[private-member-access]
         url = self.unisender._get_request_url("get_template")
         self._mock_request(
             HTTPMethod.POST,
@@ -183,8 +182,12 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
             status=HTTPStatus.FORBIDDEN,
         )
 
-        with self.assertRaises(zapros.StatusCodeError):
-            self.unisender._api_request("get_template", {"template_id": 1})
+        with pytest.raises(zapros.StatusCodeError):
+            # ruff: ignore[private-member-access]
+            self.unisender._api_request(
+                "get_template",
+                {"template_id": 1},
+            )
 
 
 @pytest.fixture
@@ -303,13 +306,16 @@ def test_ad_donor_rolls_back_on_transaction_error(
     """При ошибке транзакции донор не сохраняется."""
     email, subscription = ad_donor_data
 
-    with django_capture_on_commit_callbacks(
+    def _rollback_transaction():
+        """Откатить транзакцию БД."""
+        with transaction.atomic():
+            ad_donor(email, subscription)
+            raise RuntimeError("rollback")
+
+    with pytest.raises(RuntimeError), django_capture_on_commit_callbacks(
         execute=True,
     ) as callbacks:
-        with pytest.raises(RuntimeError):
-            with transaction.atomic():
-                ad_donor(email, subscription)
-                raise RuntimeError("rollback")
+        _rollback_transaction()
 
     assert not Donor.objects.filter(email=email).exists()
     assert callbacks == []
@@ -444,7 +450,7 @@ class SendRequestTest(UnisenderFixtureMixin, SimpleTestCase):
         """Запрос на экспорт уходит в Unisender, возвращается его ответ."""
         result = send_request(self.list_id)
 
-        self.assertEqual(result, self.response_data)
+        assert result == self.response_data
         self._assert_request_fields(
             self.export_mock,
             self.expected_request_fields,

@@ -17,4 +17,5 @@ class ForbiddenWord(models.Model):
         verbose_name_plural = "Запрещенные слова"
 
     def __str__(self):
+        """Строковое представление для модели ForbiddenWord."""
         return self.forbidden_word

@@ -7,7 +7,7 @@ from .models import CloudPayment
 
 @admin.register(CloudPayment)
 class CloudPaymentAdmin(admin.ModelAdmin):
-    """Админ зона пожертвований Cloudpayment"""
+    """Админ зона пожертвований Cloudpayment."""
 
     list_display = (
         "email",

@@ -83,7 +83,7 @@ def test_retries_zapros_errors(
 
 
 @pytest.mark.parametrize(
-    "selection, overwrite_lists",
+    ("selection", "overwrite_lists"),
     [
         ("all", 1),
         ("selected", 0),
@@ -133,7 +133,7 @@ def test_does_not_retry_unrelated_error(
     error = ValueError("Invalid data")
     api_request.side_effect = error
 
-    with pytest.raises(ValueError) as caught:
+    with pytest.raises(ValueError, match="Invalid data") as caught:
         send_users_to_unisender.run()
 
     assert caught.value is error
@@ -147,7 +147,7 @@ def test_retry_configuration():
 
 
 @pytest.mark.parametrize(
-    "error, expected_exception",
+    ("error", "expected_exception"),
     [
         (zapros.ConnectionError("Connection failed"), Retry),
         (ValueError("Invalid data"), ValueError),
@@ -174,8 +174,10 @@ def test_import_failure_does_not_send_email(
         ),
     )
 
-    with patch("api.tasks.send_payment_email_task.run") as send_email:
-        with pytest.raises(expected_exception):
-            workflow.apply(throw=True)
+    with (
+        patch("api.tasks.send_payment_email_task.run") as send_email,
+        pytest.raises(expected_exception),
+    ):
+        workflow.apply(throw=True)
 
     send_email.assert_not_called()

@@ -34,14 +34,15 @@ class Contact(AbstractUser):
     class Meta:
         verbose_name = "Контакт"
         verbose_name_plural = "Контакты"
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
                 fields=["username", "email"],
                 name="Уникальное имя пользователя и электронная почта",
             ),
-        ]
+        )
 
     def __str__(self):
+        """Возвращает строковое представление контакта."""
         return f"{self.username} - {self.email}"
 
 
@@ -70,4 +71,5 @@ class Donor(models.Model):
         verbose_name_plural = "Доноры"
 
     def __str__(self):
+        """Строковое представление для модели Donor."""
         return self.email

@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 
-DEBUG = os.getenv("DEBUG", "").lower() in ["true", "yes", "1"]
+DEBUG = os.getenv("DEBUG", "").lower() in {"true", "yes", "1"}
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
@@ -71,7 +71,7 @@ DATABASES = {
         "USER": os.getenv("POSTGRES_USER", "django"),
         "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
         "HOST": os.getenv("DB_HOST", ""),
-        "PORT": os.getenv("DB_PORT", 5432),
+        "PORT": os.getenv("DB_PORT", "5432"),
     },
 }
 
@@ -131,7 +131,7 @@ REST_FRAMEWORK = {
 STATIC_URL = os.getenv("STATIC_URL", "/static/")
 
 # Папка со статикой внутри контейнера backend
-STATIC_ROOT = os.path.join(BASE_DIR, "static")
+STATIC_ROOT = BASE_DIR / "static"
 
 # Для работы на сервере
 CELERY_BROKER_URL = os.getenv(

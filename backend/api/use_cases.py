@@ -23,12 +23,20 @@ class SyncDonorsToUnisenderUseCase:
     """Синхронизирует всех доноров с Unisender."""
 
     def __init__(self, repository, client):
+        """Инициализирует use case репозиторием доноров и клиентом Unisender.
+
+        Args:
+            repository: Репозиторий, предоставляющий метод ``get_donors``
+                для получения доноров.
+            client: Клиент Unisender с методом
+                ``send_contacts_to_unisender``.
+        """
         self.repository = repository
         self.client = client
 
     def execute(self, donor_ids=None, overwrite_lists=1):
         """Отправляет всех доноров пачками, допустимыми Unisender."""
-        if overwrite_lists not in (0, 1):
+        if overwrite_lists not in {0, 1}:
             raise ValueError("overwrite_lists должен быть равен 0 или 1")
 
         donors = self.repository.get_donors(donor_ids=donor_ids)

@@ -3,12 +3,12 @@
 import base64
 import csv
 import logging
-import os
 import pathlib
 import shutil
 from datetime import datetime
 from functools import partial
 from http import HTTPMethod, HTTPStatus
+from zoneinfo import ZoneInfo
 
 import zapros
 from celery import chain
@@ -16,11 +16,11 @@ from contacts.models import Donor
 from django.conf import settings
 from django.db import transaction
 from django.db.models import F
-from django.utils.timezone import make_aware
 from donor_base import http_client
 from donor_base.constants import (
     BAD_PAYMENTS_COUNT,
     DATE_FORMAT,
+    DEFAULT_TZ,
     NEGATIVE_SUB_STAT,
     PaymentStatuses,
     SubscriptionStatuses,
@@ -47,7 +47,10 @@ _CLOUDPAYMENTS_BAD_KEYS_STATUSES = frozenset(
 
 def string_to_date(value):
     """Метод преобразования строки в дату, установка time-zone."""
-    return make_aware(datetime.strptime(value, DATE_FORMAT))
+    return (
+        datetime.strptime(value, DATE_FORMAT)
+        .replace(tzinfo=ZoneInfo(DEFAULT_TZ))
+    )
 
 
 def donor_exists(email):
@@ -58,7 +61,7 @@ def donor_exists(email):
 def ad_donor(
     donor,
     subscription,
-    update=False,
+    update,
     *,
     send_email=False,
 ):
@@ -91,35 +94,40 @@ def ad_donor(
         )
 
 
+def _build_mixplat_payload(data):
+    """Формирует словарь данных Mixplat и определяет статус подписки."""
+    mixplat_obj_dict = {
+        "email": data["user_email"],
+        "donat": data["amount"],
+        "custom_donat": data["amount_user"],
+        "payment_method": data["payment_method"],
+        "payment_id": data["payment_id"],
+        "status": data["status"],
+        "user_account_id": data["user_account_id"],
+        "date_created": string_to_date(data["date_created"]),
+        "date_processed": string_to_date(data["date_processed"]),
+        "payment_operator": "mixplat",
+        "currency": data["currency"],
+    }
+
+    if data.get("recurrent_id"):
+        subscription = SubscriptionStatuses.ACTIVE.capitalized
+    else:
+        subscription = SubscriptionStatuses.INACTIVE.capitalized
+
+    return mixplat_obj_dict, subscription
+
+
 def mixplat_request_handler(request):
     """Метод создания объектов из данных от Mixplat."""
     try:
-        mixplat_obj_dict = dict(
-            email=request.data["user_email"],
-            donat=request.data["amount"],
-            custom_donat=request.data["amount_user"],
-            payment_method=request.data["payment_method"],
-            payment_id=request.data["payment_id"],
-            status=request.data["status"],
-            user_account_id=request.data["user_account_id"],
-            date_created=string_to_date(request.data["date_created"]),
-            date_processed=string_to_date(request.data["date_processed"]),
-            payment_operator="mixplat",
-            currency=request.data["currency"],
-        )
-
-        if request.data.get("recurrent_id"):
-            subscription = SubscriptionStatuses.ACTIVE.capitalized
-        else:
-            subscription = SubscriptionStatuses.INACTIVE.capitalized
-
+        mixplat_obj_dict, subscription = _build_mixplat_payload(request.data)
         create_or_update_donor(mixplat_obj_dict, subscription)
         MixPlat.objects.create(**mixplat_obj_dict)
-
-        return Response(dict(result="ok"), status=status.HTTP_200_OK)
+        return Response({"result": "ok"}, status=status.HTTP_200_OK)
     except KeyError:
         return Response(
-            dict(result="error", error_description="Internal error"),
+            {"result": "error", "error_description": "Internal error"},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -176,10 +184,12 @@ def create_or_update_donor(data, subscription):
             ad_donor(
                 data["email"],
                 SubscriptionStatuses.INACTIVE.capitalized,
+                update=False,
             )
             logger.info(
-                f"Создан Донор {data['email']} "
-                f"{SubscriptionStatuses.INACTIVE.capitalized}",
+                "Создан Донор %s со статусом %s",
+                data["email"],
+                SubscriptionStatuses.INACTIVE.capitalized,
             )
         # Если подписка активна:
         elif subscription == SubscriptionStatuses.ACTIVE.capitalized:
@@ -187,11 +197,13 @@ def create_or_update_donor(data, subscription):
             ad_donor(
                 data["email"],
                 SubscriptionStatuses.ACTIVE.capitalized,
+                update=False,
                 send_email=True,
             )
             logger.info(
-                f"Создан Донор {data['email']} "
-                f"{SubscriptionStatuses.ACTIVE.capitalized}",
+                "Создан Донор %s со статусом %s",
+                data["email"],
+                SubscriptionStatuses.ACTIVE.capitalized,
             )
     # Если донор есть в базе смотрим статус платежа
     else:
@@ -209,8 +221,9 @@ def create_or_update_donor(data, subscription):
                         update=True,
                     )
                     logger.info(
-                        f"У Донора {data['email']} обновлен статус "
-                        f"на {SubscriptionStatuses.LOST.capitalized}",
+                        "У Донора %s обновлен статус на %s",
+                        {data["email"]},
+                        SubscriptionStatuses.LOST.capitalized,
                     )
                 else:
                     Donor.objects.filter(email=data["email"]).update(
@@ -229,8 +242,9 @@ def create_or_update_donor(data, subscription):
                     send_email=True,
                 )
                 logger.info(
-                    f"У Донора {data['email']} обновлен статус "
-                    f"{SubscriptionStatuses.ACTIVE.capitalized}",
+                    "У Донора %s обновлен статус на %s",
+                    {data["email"]},
+                    SubscriptionStatuses.ACTIVE.capitalized,
                 )
             else:
                 Donor.objects.filter(email=data["email"]).update(
@@ -256,8 +270,8 @@ def check_cloudpayments_connection():
         if error.response.status not in _CLOUDPAYMENTS_BAD_KEYS_STATUSES:
             raise
         logger.info(
-            f"Cloudpayments отклонил запрос, статус: "
-            f"{error.response.status}",
+            "Cloudpayments отклонил запрос, статус: %s",
+            error.response.status,
         )
         return False
     return True
@@ -267,8 +281,8 @@ def _extract_unisender_result(response_data, error_label="Ошибка:"):
     """Извлекает result из ответа Unisender."""
     if "error" in response_data:
         logger.info(error_label)
-        logger.info(f"Код ошибки: {response_data['code']}")
-        logger.info(f"Сообщение об ошибке: {response_data['error']}")
+        logger.info("Код ошибки: %s", response_data["code"])
+        logger.info("Сообщение об ошибке: %s", response_data["error"])
         return None
     if "result" in response_data:
         return response_data["result"]
@@ -305,7 +319,7 @@ def send_payment_email(email, list_id):
     )
     if result is not None:
         logger.info("Сообщение успешно отправлено!")
-        logger.info(f"Email ID: {result['email_id']}")
+        logger.info("Email ID: %s", result["email_id"])
 
 
 def send_request(list_id):
@@ -335,30 +349,30 @@ def add_contacts(file_url):
         logger.info(message)
         return message
 
-    bulk_list = list()
+    bulk_list = []
     directory = "files"
     if not pathlib.Path(directory).exists():
         pathlib.Path(directory).mkdir(parents=True)
-    file_path = os.path.join(directory, "data.csv")
+    file_path = pathlib.Path(directory) / "data.csv"
 
-    pathlib.Path(file_path).write_bytes(response.read())
+    file_path.write_bytes(response.read())
 
-    with pathlib.Path(file_path).open(encoding="utf-8") as csv_file:
+    with file_path.open(encoding="utf-8") as csv_file:
         file_reader = csv.reader(csv_file, delimiter=",")
-        for row in file_reader:
-            if row[0] != "email" and donor_exists(row[0]) is False:
-                bulk_list.append(
-                    Donor(
-                        email=row[0],
-                        subscription=get_capitalized_by_group_id(row[1]),
-                    ),
-                )
+        bulk_list.extend(
+            Donor(
+                email=row[0],
+                subscription=get_capitalized_by_group_id(row[1]),
+            )
+            for row in file_reader
+            if row[0] != "email" and donor_exists(row[0]) is False
+        )
         Donor.objects.bulk_create(bulk_list)
 
     try:
         shutil.rmtree(directory)  # удаляем папку с файлом
     except OSError as e:
-        raise f"Error: {e.filename, e.strerror}"
+        raise OSError(f"Error: {e.filename, e.strerror}") from e
 
-    logger.info(f"Добавлено {len(bulk_list)} контактов.")
+    logger.info("Добавлено %s контактов.", len(bulk_list))
     return f"Добавлено {len(bulk_list)} контактов."

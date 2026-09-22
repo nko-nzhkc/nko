@@ -44,9 +44,7 @@ class ForbiddenwordSerializer(serializers.ModelSerializer):
 
 
 class CloudpaymentsSerializer(serializers.ModelSerializer):
-    """
-    Сериализатор для модели CloudPayment.
-    """
+    """Сериализатор для модели CloudPayment."""
 
     class Meta:
         model = CloudPayment

@@ -10,7 +10,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .mixins import ViewListCreateMixinsSet
-from .permissions import IsAdmin
 from .serializers import (
     CloudpaymentsSerializer,
     ContactSerializer,
@@ -52,9 +51,11 @@ class ContactViewSet(viewsets.ModelViewSet):
         if request.method == "GET":
             return Response(status=status.HTTP_200_OK)
         return Response(
-            dict(
-                result=add_contacts(request.data["result"]["file_to_download"]),
-            ),
+            {
+                "result": add_contacts(
+                    request.data["result"]["file_to_download"],
+                ),
+            },
             status=status.HTTP_200_OK,
         )
 
@@ -64,7 +65,6 @@ class ForbiddenwordViewSet(ViewListCreateMixinsSet):
 
     queryset = ForbiddenWord.objects.all()
     serializer_class = ForbiddenwordSerializer
-    permission_classes = [IsAdmin]
     pagination_class = None
 
 
@@ -81,28 +81,26 @@ class MixplatViewSet(viewsets.ModelViewSet):
 
 
 class CloudPaymentsViewSet(viewsets.GenericViewSet):
-    """
-    Вьюсет для Cloudpayment.
-    """
+    """Вьюсет для Cloudpayment."""
 
     @action(detail=False, url_path="create_cloudpayment", methods=["post"])
     def create_cloudpayment(self, request):
-        """
-        Создание экземпляра Cloudpayment.
-        """
+        """Создание экземпляра Cloudpayment."""
         serializer = CloudpaymentsSerializer(
             data=handling_cloudpayment_data(request),
         )
         if serializer.is_valid():
             serializer.save()
-            return Response(dict(code=0), status=status.HTTP_200_OK)
+            return Response({"code": 0}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PaymentsListView(View):
+    """Вью для всех платежей."""
     model = None
 
     def get(self, request, *args, **kwargs):
+        """Обрабатывает GET-запрос для получения списка всех платежей."""
         mixplat_payments = MixPlat.objects.all()
         cloudpayment_payments = CloudPayment.objects.all()
 

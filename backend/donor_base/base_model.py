@@ -22,7 +22,6 @@ class BaseModelDonation(models.Model):
         verbose_name="Электронная почта",
     )
     donat = models.PositiveSmallIntegerField(
-        # choices=settings.AMOUNT,
         default=DEFAULT_DONATION,
         verbose_name="Размер пожертвования",
     )

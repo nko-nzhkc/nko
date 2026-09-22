@@ -19,15 +19,17 @@ class Client:
     def _build_request_data(self, data, extra_key=None):
         result = self._get_default_request_data()
         for key, val in data.items():
-            _key = f"{extra_key}[{key}]" if isinstance(extra_key, str) else key
+            full_key = (
+                f"{extra_key}[{key}]" if isinstance(extra_key, str) else key,
+            )
             if isinstance(val, dict):
-                result.update(self._build_request_data(val, _key))
+                result.update(self._build_request_data(val, full_key))
             elif isinstance(val, list):
                 result.update(
-                    self._build_request_data(dict(enumerate(val)), _key),
+                    self._build_request_data(dict(enumerate(val)), full_key),
                 )
             elif val is not None:
-                result[_key] = val
+                result[full_key] = val
         return result
 
     def _to_camel_case(self, snake_case_str):
