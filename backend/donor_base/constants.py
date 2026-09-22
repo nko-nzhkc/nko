@@ -72,5 +72,6 @@ BAD_PAYMENTS_COUNT = 3
 
 class HTTPMethod(StrEnum):
     """Класс для Http методов."""
+
     GET = "get"
     POST = "post"

@@ -30,7 +30,8 @@ def check_donor_subscriptions(email):
         method="POST",
         url=settings.CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL,
         headers=headers,
-        json=body)
+        json=body,
+    )
     return (
         SubscriptionStatuses.ACTIVE.capitalized
         if response.json()["Model"]

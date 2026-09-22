@@ -121,11 +121,7 @@ def test_execute_splits_overflow_into_two_batches(
         1,
     ]
 
-    actual = [
-        row
-        for payload in payloads
-        for row in payload[DATA_KEY]
-    ]
+    actual = [row for payload in payloads for row in payload[DATA_KEY]]
     expected = [_donor_row(donor) for donor in donors]
 
     assert sorted(actual) == sorted(expected)

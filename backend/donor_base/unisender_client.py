@@ -51,7 +51,8 @@ class Client:
         elif isinstance(field_value, list):
             target.update(
                 self._build_request_data(
-                    dict(enumerate(field_value)), full_key,
+                    dict(enumerate(field_value)),
+                    full_key,
                 ),
             )
         elif field_value is not None:
