@@ -133,7 +133,7 @@ def test_execute_passes_filter_and_overwrite_lists(
                 [
                     selected.email,
                     get_group_by_capitalized(selected.subscription),
-                ]
+                ],
             ],
             "overwrite_lists": overwrite_lists,
         },

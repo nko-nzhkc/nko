@@ -48,7 +48,7 @@ _CLOUDPAYMENTS_BAD_KEYS_STATUSES = frozenset(
 def string_to_date(value):
     """Метод преобразования строки в дату, установка time-zone."""
     return datetime.strptime(value, DATE_FORMAT).replace(
-        tzinfo=ZoneInfo(DEFAULT_TZ)
+        tzinfo=ZoneInfo(DEFAULT_TZ),
     )
 
 
