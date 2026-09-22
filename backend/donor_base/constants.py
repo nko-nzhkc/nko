@@ -2,8 +2,8 @@ from enum import Enum
 from typing import ClassVar
 
 
-class PaymentStatuses(Enum):
-    """Класс статусов платежей."""
+class FailedPaymentStatuses(Enum):
+    """Класс статусов не прошедших платежей."""
 
     CANCELLED = "Cancelled"
     DECLINED = "Declined"

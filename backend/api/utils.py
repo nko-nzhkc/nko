@@ -22,7 +22,7 @@ from donor_base.constants import (
     DATE_FORMAT,
     DEFAULT_TZ,
     NEGATIVE_SUB_STAT,
-    PaymentStatuses,
+    FailedPaymentStatuses,
     SubscriptionStatuses,
 )
 from donor_base.subscriptions import (
@@ -174,86 +174,94 @@ def handling_cloudpayment_data(request):
     raise ValueError("Неправильная структура request.data")
 
 
-def create_or_update_donor(data, subscription):
-    """Создаем нового донора или обновляем статус существующего."""
-    # Если донора нет в базе:
-    if not donor_exists(data["email"]):
-        # Если подписка неактивна:
-        if subscription == SubscriptionStatuses.INACTIVE.capitalized:
-            # Сохраняем как Inactive
+def _handle_failed_payment(data, donor):
+    """Обрабатывает случай неуспешного платежа для существующего донора."""
+    if donor.subscription == SubscriptionStatuses.ACTIVE.capitalized:
+        # если у донора 3й отклонённый платёж
+        if donor.count_declined + 1 == BAD_PAYMENTS_COUNT:
             ad_donor(
                 data["email"],
-                SubscriptionStatuses.INACTIVE.capitalized,
-                update=False,
+                SubscriptionStatuses.LOST.capitalized,
+                update=True,
             )
             logger.info(
-                "Создан Донор %s со статусом %s",
-                data["email"],
-                SubscriptionStatuses.INACTIVE.capitalized,
+                "У Донора %s обновлен статус на %s",
+                {data["email"]},
+                SubscriptionStatuses.LOST.capitalized,
             )
-        # Если подписка активна:
-        elif subscription == SubscriptionStatuses.ACTIVE.capitalized:
-            # Сохраняем как "Active"
-            ad_donor(
-                data["email"],
-                SubscriptionStatuses.ACTIVE.capitalized,
-                update=False,
-                send_email=True,
-            )
-            logger.info(
-                "Создан Донор %s со статусом %s",
-                data["email"],
-                SubscriptionStatuses.ACTIVE.capitalized,
-            )
-    # Если донор есть в базе смотрим статус платежа
-    else:
-        donor = Donor.objects.get(email=data["email"])
-        # Если платеж неуспешный
-        if data["status"] in PaymentStatuses:
-            # Если в базе статус активен
-            if donor.subscription == SubscriptionStatuses.ACTIVE.capitalized:
-                # если у донора 3й отклонённый платёж
-                if donor.count_declined + 1 == BAD_PAYMENTS_COUNT:
-                    # Обновляем его статус на Lost
-                    ad_donor(
-                        data["email"],
-                        SubscriptionStatuses.LOST.capitalized,
-                        update=True,
-                    )
-                    logger.info(
-                        "У Донора %s обновлен статус на %s",
-                        {data["email"]},
-                        SubscriptionStatuses.LOST.capitalized,
-                    )
-                else:
-                    Donor.objects.filter(email=data["email"]).update(
-                        count_declined=F("count_declined") + 1,
-                    )
-        # Если платеж успешный, обновляем запись
-        # если активная подписка
-        elif subscription == SubscriptionStatuses.ACTIVE.capitalized:
-            # если старый статус "Lost", "Inactive"
-            if donor.subscription in NEGATIVE_SUB_STAT:
-                # Обновляем его статус на "Active"
-                ad_donor(
-                    data["email"],
-                    SubscriptionStatuses.ACTIVE.capitalized,
-                    update=True,
-                    send_email=True,
-                )
-                logger.info(
-                    "У Донора %s обновлен статус на %s",
-                    {data["email"]},
-                    SubscriptionStatuses.ACTIVE.capitalized,
-                )
-            else:
-                Donor.objects.filter(email=data["email"]).update(
-                    count_declined=0,
-                )
         else:
             Donor.objects.filter(email=data["email"]).update(
-                count_declined=0,
+                count_declined=F("count_declined") + 1,
             )
+
+
+def _handle_active_subscription(data, donor):
+    """Обрабатывает случай успешного платежа с активной подпиской."""
+    # если старый статус "Lost", "Inactive"
+    if donor.subscription in NEGATIVE_SUB_STAT:
+        ad_donor(
+            data["email"],
+            SubscriptionStatuses.ACTIVE.capitalized,
+            update=True,
+            send_email=True,
+        )
+        logger.info(
+            "У Донора %s обновлен статус на %s",
+            {data["email"]},
+            SubscriptionStatuses.ACTIVE.capitalized,
+        )
+    else:
+        Donor.objects.filter(email=data["email"]).update(
+            count_declined=0,
+        )
+
+
+def _create_new_donor(data, subscription):
+    """Создает нового донора в зависимости от статуса подписки."""
+    if subscription == SubscriptionStatuses.INACTIVE.capitalized:
+        ad_donor(
+            data["email"],
+            SubscriptionStatuses.INACTIVE.capitalized,
+            update=False,
+        )
+        logger.info(
+            "Создан Донор %s со статусом %s",
+            data["email"],
+            SubscriptionStatuses.INACTIVE.capitalized,
+        )
+    elif subscription == SubscriptionStatuses.ACTIVE.capitalized:
+        ad_donor(
+            data["email"],
+            SubscriptionStatuses.ACTIVE.capitalized,
+            update=False,
+            send_email=True,
+        )
+        logger.info(
+            "Создан Донор %s со статусом %s",
+            data["email"],
+            SubscriptionStatuses.ACTIVE.capitalized,
+        )
+
+
+def _update_existing_donor(data, subscription):
+    """Обновляет статус существующего донора в зависимости от платежа."""
+    donor = Donor.objects.get(email=data["email"])
+    if data["status"] in FailedPaymentStatuses:
+        _handle_failed_payment(data, donor)
+    elif subscription == SubscriptionStatuses.ACTIVE.capitalized:
+        _handle_active_subscription(data, donor)
+    else:
+        Donor.objects.filter(email=data["email"]).update(
+            count_declined=0,
+        )
+
+
+def create_or_update_donor(data, subscription):
+    """Создаем нового донора или обновляем статус существующего."""
+    if donor_exists(data["email"]):
+        _update_existing_donor(data, subscription)
+    else:
+        _create_new_donor(data, subscription)
 
 
 def check_cloudpayments_connection():
