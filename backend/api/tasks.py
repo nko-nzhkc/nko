@@ -27,6 +27,6 @@ def send_users_to_unisender(donor_ids=None, overwrite_lists=1):
 @app.task
 def send_payment_email_task(email, list_id):
     """Отправляет письмо после завершения импорта контакта."""
-    from api.utils import send_payment_email
+    from api.unisender_service import send_payment_email
 
     send_payment_email(email, list_id)

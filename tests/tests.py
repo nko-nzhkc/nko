@@ -7,7 +7,8 @@ from urllib.parse import parse_qs, urlsplit
 import dishka
 import pytest
 import zapros
-from api.utils import ad_donor, send_payment_email, send_request
+from api.donor_service import ad_donor
+from api.unisender_service import send_payment_email, send_request
 from contacts.models import Donor
 from django.conf import settings
 from django.db import transaction
@@ -199,21 +200,21 @@ def ad_donor_data(db, faker):
 @pytest.fixture
 def sync_task():
     """Изолирует публикацию задачи отправки контактов."""
-    with patch("api.utils.send_users_to_unisender") as task:
+    with patch("api.donor_service.send_users_to_unisender") as task:
         yield task
 
 
 @pytest.fixture
 def email_task():
     """Изолирует создание задачи отправки письма."""
-    with patch("api.utils.send_payment_email_task") as task:
+    with patch("api.donor_service.send_payment_email_task") as task:
         yield task
 
 
 @pytest.fixture
 def chain_factory():
     """Изолирует публикацию цепочки в брокер."""
-    with patch("api.utils.chain") as factory:
+    with patch("api.donor_service.chain") as factory:
         yield factory
 
 

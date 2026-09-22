@@ -9,19 +9,16 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .mixins import ViewListCreateMixinsSet
-from .serializers import (
+from api.cloudpayments_service import handling_cloudpayment_data
+from api.mixins import ViewListCreateMixinsSet
+from api.mixplat_service import mixplat_request_handler
+from api.serializers import (
     CloudpaymentsSerializer,
     ContactSerializer,
     ForbiddenwordSerializer,
     MixPlatSerializer,
 )
-from .utils import (
-    add_contacts,
-    handling_cloudpayment_data,
-    mixplat_request_handler,
-    send_request,
-)
+from api.unisender_service import add_contacts, send_request
 
 
 class ContactViewSet(viewsets.ModelViewSet):
