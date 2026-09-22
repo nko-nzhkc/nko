@@ -187,6 +187,9 @@ ignore = [
   "raise-vanilla-args",
   "ambiguous-unicode-character-docstring",
   "import-outside-top-level",
+  "ambiguous-unicode-character-string",
+  "ambiguous-unicode-character-docstring",
+  "ambiguous-unicode-character-comment",
 ]
 external = [ "WPS" ]
 
