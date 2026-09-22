@@ -135,7 +135,8 @@ STATIC_ROOT = BASE_DIR / "static"
 
 # Для работы на сервере
 CELERY_BROKER_URL = os.getenv(
-    "CELERY_BROKER_URL", "amqp://user:password@rabbitmq:5672//",
+    "CELERY_BROKER_URL",
+    "amqp://user:password@rabbitmq:5672//",
 )
 
 CELERY_ACCEPT_CONTENT = ["application/json"]

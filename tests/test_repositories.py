@@ -43,9 +43,6 @@ def test_get_donors_returns_email_and_subscription(donors, selection):
     actual = list(
         DonorRepository().get_donors(donor_ids=donor_ids),
     )
-    expected = [
-        (donor.email, donor.subscription)
-        for donor in expected_donors
-    ]
+    expected = [(donor.email, donor.subscription) for donor in expected_donors]
 
     assert sorted(actual) == sorted(expected)

@@ -46,7 +46,7 @@ class SubscriptionStatuses(Enum):
 NEGATIVE_SUB_STAT = (
     SubscriptionStatuses.LOST.capitalized,
     SubscriptionStatuses.INACTIVE.capitalized,
-    )
+)
 
 PAYMENT_METHOD_LENGTH = 64
 

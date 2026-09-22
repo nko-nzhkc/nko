@@ -10,9 +10,7 @@ HTTP_TIMEOUT = 30.0
 def _stringify_form_fields(data):
     """Преобразует данные в строковые поля формы."""
     return {
-        str(key): str(value)
-        for key, value in data.items()
-        if value is not None
+        str(key): str(value) for key, value in data.items() if value is not None
     }
 
 

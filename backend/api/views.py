@@ -97,6 +97,7 @@ class CloudPaymentsViewSet(viewsets.GenericViewSet):
 
 class PaymentsListView(View):
     """Вью для всех платежей."""
+
     model = None
 
     def get(self, request, *args, **kwargs):

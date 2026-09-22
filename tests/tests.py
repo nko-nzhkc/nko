@@ -312,9 +312,12 @@ def test_ad_donor_rolls_back_on_transaction_error(
             ad_donor(email, subscription)
             raise RuntimeError("rollback")
 
-    with pytest.raises(RuntimeError), django_capture_on_commit_callbacks(
-        execute=True,
-    ) as callbacks:
+    with (
+        pytest.raises(RuntimeError),
+        django_capture_on_commit_callbacks(
+            execute=True,
+        ) as callbacks,
+    ):
         _rollback_transaction()
 
     assert not Donor.objects.filter(email=email).exists()

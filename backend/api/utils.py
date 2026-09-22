@@ -47,9 +47,8 @@ _CLOUDPAYMENTS_BAD_KEYS_STATUSES = frozenset(
 
 def string_to_date(value):
     """Метод преобразования строки в дату, установка time-zone."""
-    return (
-        datetime.strptime(value, DATE_FORMAT)
-        .replace(tzinfo=ZoneInfo(DEFAULT_TZ))
+    return datetime.strptime(value, DATE_FORMAT).replace(
+        tzinfo=ZoneInfo(DEFAULT_TZ)
     )
 
 
@@ -144,7 +143,8 @@ def check_donor_subscriptions(email):
     body = {"accountId": f"{email}"}
     response = http_client.request("POST", url, headers=headers, json=body)
     return (
-        SubscriptionStatuses.ACTIVE.capitalized if response.json()["Model"]
+        SubscriptionStatuses.ACTIVE.capitalized
+        if response.json()["Model"]
         else SubscriptionStatuses.INACTIVE.capitalized
     )
 
@@ -307,7 +307,8 @@ def send_payment_email(email, list_id):
     }
     response = http_client.post_form(settings.URL_GET_TEMP, data)
     template = _extract_unisender_result(
-        response.json, "Ошибка при запросе шаблона:",
+        response.json,
+        "Ошибка при запросе шаблона:",
     )
     if template is None:
         return
@@ -323,7 +324,8 @@ def send_payment_email(email, list_id):
     }
     response = http_client.post_form(settings.URL_SEND_EMAIL, data)
     result = _extract_unisender_result(
-        response.json, "Ошибка при отправке сообщения:",
+        response.json,
+        "Ошибка при отправке сообщения:",
     )
     if result is not None:
         logger.info("Сообщение успешно отправлено!")

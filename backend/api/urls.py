@@ -15,10 +15,14 @@ app_name = "api"
 router_v1 = routers.DefaultRouter()
 router_v1.register("contacts", ContactViewSet, basename="contacts")
 router_v1.register(
-    "forbiddenwords", ForbiddenwordViewSet, basename="forbiddenwords",
+    "forbiddenwords",
+    ForbiddenwordViewSet,
+    basename="forbiddenwords",
 )
 router_v1.register(
-    "cloudpayments", CloudPaymentsViewSet, basename="cloudpayments",
+    "cloudpayments",
+    CloudPaymentsViewSet,
+    basename="cloudpayments",
 )
 router_v1.register("mixplat", MixplatViewSet, basename="mixplat")
 

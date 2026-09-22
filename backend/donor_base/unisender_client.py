@@ -58,7 +58,10 @@ class Client:
         return http_client.post_form(url, data)
 
     def send_contacts_to_unisender(
-        self, field_names, data, overwrite_lists=0,
+        self,
+        field_names,
+        data,
+        overwrite_lists=0,
     ):
         """Отправляет контакты в Unisender."""
         return self._api_request(

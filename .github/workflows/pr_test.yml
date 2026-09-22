@@ -30,6 +30,11 @@ jobs:
         run: |
           poetry run flake8 --exclude=*/migrations/* backend/ tests/
 
+      - name: Test with ruff
+        run: |
+          poetry run ruff check backend/ tests/
+          poetry run ruff format --check backend/ tests/
+
       - name: Check migrations
         run: |
           cp .env.example .env

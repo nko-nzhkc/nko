@@ -27,7 +27,8 @@ class Contact(AbstractUser):
         verbose_name="Электронная почта",
     )
     subject = models.CharField(
-        max_length=MAX_SUBJECT_LENGTH, verbose_name="Тема письма",
+        max_length=MAX_SUBJECT_LENGTH,
+        verbose_name="Тема письма",
     )
     comment = models.TextField(verbose_name="Комментарий")
 

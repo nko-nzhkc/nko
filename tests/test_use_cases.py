@@ -100,11 +100,7 @@ def test_execute_splits_501_donors_into_two_batches(
         1,
     ]
 
-    actual = [
-        row
-        for payload in payloads
-        for row in payload["data"]
-    ]
+    actual = [row for payload in payloads for row in payload["data"]]
     expected = [
         [donor.email, get_group_by_capitalized(donor.subscription)]
         for donor in donors
@@ -133,10 +129,12 @@ def test_execute_passes_filter_and_overwrite_lists(
         "import_contacts",
         {
             "field_names": UNISENDER_FIELD_NAMES,
-            "data": [[
-                selected.email,
-                get_group_by_capitalized(selected.subscription),
-            ]],
+            "data": [
+                [
+                    selected.email,
+                    get_group_by_capitalized(selected.subscription),
+                ]
+            ],
             "overwrite_lists": overwrite_lists,
         },
     )
