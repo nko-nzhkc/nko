@@ -2,7 +2,7 @@
 from django.contrib import admin
 from donor_base.constants import EMPTY_VALUE
 
-from .models import MixPlat
+from mixplat.models import MixPlat
 
 
 @admin.register(MixPlat)

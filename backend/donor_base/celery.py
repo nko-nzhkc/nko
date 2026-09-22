@@ -6,7 +6,7 @@ from celery import Celery
 
 logger = logging.getLogger("Celery_logger")
 logger.setLevel(logging.INFO)
-handler = logging.FileHandler("celery.log")
+handler = logging.FileHandler("celery.log")  # noqa: WPS110
 handler.setLevel(logging.INFO)
 formatter = logging.Formatter(
     "%(asctime)s - %(name)s - %(levelname)s - %(message)s",

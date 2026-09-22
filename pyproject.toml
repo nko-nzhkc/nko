@@ -220,6 +220,12 @@ select = ["WPS", "E99"]
 
 ignore = ["WPS412"]
 
+per-file-ignores = [
+    "backend/donor_base/settings.py: WPS407, WPS226",
+    "tests/*: WPS202",
+    "backend/donor_base/__init__.py:WPS410",
+]
+
 extend-exclude = [
     ".venv",
     ".vscode/",

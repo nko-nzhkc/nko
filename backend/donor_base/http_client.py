@@ -7,11 +7,18 @@ from donor_base import di
 HTTP_TIMEOUT = 30.0
 
 
+def _stringify_pair(key, field):
+    """Преобразует пару ключ-значение в строки."""
+    return str(key), str(field)
+
+
 def _stringify_form_fields(data):
     """Преобразует данные в строковые поля формы."""
-    return {
-        str(key): str(value) for key, value in data.items() if value is not None
-    }
+    return dict(
+        _stringify_pair(key, field)
+        for key, field in data.items()
+        if field is not None
+    )
 
 
 def request(method, url, **kwargs):

@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import ClassVar
 
 
@@ -35,7 +35,7 @@ class SubscriptionStatuses(Enum):
 
         Нужно для быстрого обращения к атрибутам констант.
         """
-        obj = object.__new__(cls)
+        obj = object.__new__(cls)  # noqa: WPS110
         obj._value_ = (verbosed, capitalized, group_id)
         obj.verbosed = verbosed
         obj.capitalized = capitalized
@@ -68,3 +68,9 @@ MAX_PAYMENT_ID_LENGTH = 100
 MAX_PAYMENT_STATUS_LENGTH = 100
 
 BAD_PAYMENTS_COUNT = 3
+
+
+class HTTPMethod(StrEnum):
+    """Класс для Http методов."""
+    GET = "get"
+    POST = "post"

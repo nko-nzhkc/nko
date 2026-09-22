@@ -6,10 +6,10 @@ import pathlib
 import shutil
 from http import HTTPMethod, HTTPStatus
 
+from contacts.models import Donor
 from django.conf import settings
 from donor_base import http_client
 from donor_base.subscriptions import get_capitalized_by_group_id
-from contacts.models import Donor
 
 from api.donor_service import donor_exists
 
@@ -20,11 +20,12 @@ def _extract_unisender_result(response_data, error_label="Ошибка:"):
     """Извлекает result из ответа Unisender."""
     if "error" in response_data:
         logger.info(error_label)
-        logger.info("Код ошибки: %s", response_data["code"])
-        logger.info("Сообщение об ошибке: %s", response_data["error"])
+        logger.info("Код ошибки: %s", response_data.get("code"))
+        logger.info("Сообщение об ошибке: %s", response_data.get("error"))
         return None
-    if "result" in response_data:
-        return response_data["result"]
+    unisender_result = response_data.get("result")
+    if unisender_result is not None:
+        return unisender_result
     logger.info("Неизвестный ответ от сервера: %s", response_data)
     return None
 
@@ -54,13 +55,13 @@ def send_payment_email(email, list_id):
         "list_id": list_id,
     }
     response = http_client.post_form(settings.URL_SEND_EMAIL, data)
-    result = _extract_unisender_result(
+    unisender_result = _extract_unisender_result(
         response.json,
         "Ошибка при отправке сообщения:",
     )
-    if result is not None:
+    if unisender_result is not None:
         logger.info("Сообщение успешно отправлено!")
-        logger.info("Email ID: %s", result["email_id"])
+        logger.info("Email ID: %s", unisender_result["email_id"])
 
 
 def send_request(list_id):
@@ -74,46 +75,56 @@ def send_request(list_id):
     }
     response = http_client.post_form(settings.EXPORT_UNISENDER, data)
     response_data = response.json
-    result = _extract_unisender_result(response_data)
-    if result is None:
+    unisender_result = _extract_unisender_result(response_data)
+    if unisender_result is None:
         return None
     logger.info("Успешно!")
-    logger.info("result: %s", result)
+    logger.info("result: %s", unisender_result)
     return response_data
 
 
-def add_contacts(file_url):
-    """Добавление доноров в БД из файла, получаемого по ссылке."""
+def _save_file_from_url(file_url: str, file_path: pathlib.Path) -> str | None:
+    """Скачивает файл по ссылке и сохраняет локально.
+
+    Возвращает сообщение об ошибке или None.
+    """
     response = http_client.request(HTTPMethod.GET, file_url)
     if response.status != HTTPStatus.OK:
-        message = f"Файл по ссылке не получен, код ответа {response.status}."
-        logger.info(message)
-        return message
-
-    bulk_list = []
-    directory = "files"
-    if not pathlib.Path(directory).exists():
-        pathlib.Path(directory).mkdir(parents=True)
-    file_path = pathlib.Path(directory) / "data.csv"
-
+        return f"Файл по ссылке не получен, код ответа {response.status}."
+    file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_bytes(response.read())
+    return None
 
+
+def _build_bulk_list(file_path: pathlib.Path) -> list:
+    """Формирует список новых доноров из CSV-файла."""
     with file_path.open(encoding="utf-8") as csv_file:
-        file_reader = csv.reader(csv_file, delimiter=",")
-        bulk_list.extend(
+        return [
             Donor(
                 email=row[0],
                 subscription=get_capitalized_by_group_id(row[1]),
             )
-            for row in file_reader
-            if row[0] != "email" and donor_exists(row[0]) is False
-        )
-        Donor.objects.bulk_create(bulk_list)
+            for row in csv.reader(csv_file, delimiter=",")
+            if row[0] != "email" and not donor_exists(row[0])
+        ]
+
+
+def add_contacts(file_url):
+    """Добавление доноров в БД из файла, получаемого по ссылке."""
+    file_path = pathlib.Path("files") / "data.csv"
+
+    error_message = _save_file_from_url(file_url, file_path)
+    if error_message:
+        logger.info(error_message)
+        return error_message
+
+    bulk_list = _build_bulk_list(file_path)
+    Donor.objects.bulk_create(bulk_list)
 
     try:
-        shutil.rmtree(directory)  # удаляем папку с файлом
-    except OSError as e:
-        raise OSError(f"Error: {e.filename, e.strerror}") from e
+        shutil.rmtree(file_path.parent)
+    except OSError as error:
+        raise OSError(f"Error: {error.filename} - {error.strerror}") from error
 
     logger.info("Добавлено %s контактов.", len(bulk_list))
     return f"Добавлено {len(bulk_list)} контактов."

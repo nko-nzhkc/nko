@@ -2,7 +2,7 @@
 from django.contrib import admin
 from donor_base.constants import EMPTY_VALUE
 
-from .models import Contact, Donor
+from contacts.models import Contact, Donor
 
 
 @admin.register(Contact)

@@ -18,9 +18,9 @@ from api.donor_service import create_or_update_donor
 logger = logging.getLogger(__name__)
 
 
-def string_to_date(value):
+def string_to_date(date_string):
     """Метод преобразования строки в дату, установка time-zone."""
-    return datetime.strptime(value, DATE_FORMAT).replace(
+    return datetime.strptime(date_string, DATE_FORMAT).replace(
         tzinfo=ZoneInfo(DEFAULT_TZ),
     )
 
@@ -49,15 +49,20 @@ def _build_mixplat_payload(data):
     return mixplat_obj_dict, subscription
 
 
+def _process_mixplat_request(data):
+    """Обрабатывает данные запроса Mixplat и сохраняет объекты."""
+    mixplat_obj_dict, subscription = _build_mixplat_payload(data)
+    create_or_update_donor(mixplat_obj_dict, subscription)
+    MixPlat.objects.create(**mixplat_obj_dict)
+
+
 def mixplat_request_handler(request):
     """Метод создания объектов из данных от Mixplat."""
     try:
-        mixplat_obj_dict, subscription = _build_mixplat_payload(request.data)
-        create_or_update_donor(mixplat_obj_dict, subscription)
-        MixPlat.objects.create(**mixplat_obj_dict)
-        return Response({"result": "ok"}, status=status.HTTP_200_OK)
+        _process_mixplat_request(request.data)
     except KeyError:
         return Response(
             {"result": "error", "error_description": "Internal error"},
             status=status.HTTP_400_BAD_REQUEST,
         )
+    return Response({"result": "ok"}, status=status.HTTP_200_OK)

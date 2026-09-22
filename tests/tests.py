@@ -21,7 +21,13 @@ from faker import Faker
 from zapros.matchers import path
 from zapros.mock import Mock, MockMiddleware, MockRouter
 
-CONTACT_FIELDS = ["email", "email_list_ids"]
+CONTACT_FIELDS = ("email", "email_list_ids")
+
+# Общие ключи полей запросов/ответов Unisender, вынесенные в константы,
+# чтобы не плодить дублирующиеся строковые литералы (WPS226).
+FORMAT_FIELD = "format"
+API_KEY_FIELD = "api_key"
+RESULT_FIELD = "result"
 
 
 def expected_import_request_fields(
@@ -36,8 +42,8 @@ def expected_import_request_fields(
     contact_values = [email, list_id]
 
     fields = {
-        "format": format_,
-        "api_key": api_key,
+        FORMAT_FIELD: format_,
+        API_KEY_FIELD: api_key,
         "overwrite_lists": overwrite_lists,
     }
 
@@ -52,8 +58,8 @@ def expected_import_request_fields(
     )
     fields.update(
         {
-            f"data[0][{index}]": value
-            for index, value in enumerate(contact_values)
+            f"data[0][{index}]": contact_value
+            for index, contact_value in enumerate(contact_values)
         },
     )
 
@@ -100,7 +106,8 @@ class UnisenderFixtureMixin:
         """Проверяет поля тела исходящего form-urlencoded запроса."""
         mock.assert_called_once()
         assert self._parse_request_fields(mock.calls[0]) == {
-            key: str(value) for key, value in expected_fields.items()
+            key: str(field_value)
+            for key, field_value in expected_fields.items()
         }
 
     def _assert_last_request_fields(self, mock, expected_fields):
@@ -111,14 +118,15 @@ class UnisenderFixtureMixin:
         """
         assert mock.called
         assert self._parse_request_fields(mock.calls[-1]) == {
-            key: str(value) for key, value in expected_fields.items()
+            key: str(field_value)
+            for key, field_value in expected_fields.items()
         }
 
     def _parse_request_fields(self, request):
         """Разбирает поля тела исходящего form-urlencoded запроса."""
         body = request.body.decode("utf-8")
         fields = parse_qs(body, keep_blank_values=True)
-        return {key: values[0] for key, values in fields.items()}
+        return {key: field_value[0] for key, field_value in fields.items()}
 
 
 class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
@@ -143,14 +151,14 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
             list_id=self.list_id,
             api_key=self.api_key,
             overwrite_lists=1,
-            format_=settings.DEFAULT_CONF["format"],
+            format_=settings.DEFAULT_CONF[FORMAT_FIELD],
             platform=self.platform,
         )
         self.import_mock = self._mock_request(
             HTTPMethod.POST,
             # ruff: ignore[private-member-access]
             self.unisender._get_request_url("import_contacts"),
-            {"result": {"total": 1}},
+            {RESULT_FIELD: {"total": 1}},
         )
 
     def test_build_request_data_flattens_payload(self):
@@ -166,7 +174,7 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
         response = self.unisender._api_request("import_contacts", self.payload)
 
         assert response.status == HTTPStatus.OK
-        assert response.json == {"result": {"total": 1}}
+        assert response.json == {RESULT_FIELD: {"total": 1}}
         self._assert_request_fields(
             self.import_mock,
             self.expected_request_fields,
@@ -216,6 +224,13 @@ def chain_factory():
     """Изолирует публикацию цепочки в брокер."""
     with patch("api.donor_service.chain") as factory:
         yield factory
+
+
+def _rollback_donor_transaction(email, subscription):
+    """Откатывает транзакцию БД после вызова ad_donor (для теста ошибки)."""
+    with transaction.atomic():
+        ad_donor(email, subscription)
+        raise RuntimeError("rollback")
 
 
 def test_ad_donor_saves_donor_and_publishes_task(
@@ -275,7 +290,7 @@ def test_ad_donor_uses_overwrite_lists_for_update(
     signature.apply_async.assert_called_once_with()
 
 
-def test_ad_donor_does_not_publish_task_before_commit(
+def test_ad_donor_skips_task_before_commit(
     ad_donor_data,
     sync_task,
     django_capture_on_commit_callbacks,
@@ -290,11 +305,12 @@ def test_ad_donor_does_not_publish_task_before_commit(
         ad_donor(email, subscription)
 
         signature.apply_async.assert_not_called()
+        recorded_callbacks = list(callbacks)
 
-    assert len(callbacks) == 1
+    assert len(recorded_callbacks) == 1
     signature.apply_async.assert_not_called()
 
-    callbacks[0]()
+    recorded_callbacks[0]()
 
     signature.apply_async.assert_called_once_with()
 
@@ -307,19 +323,13 @@ def test_ad_donor_rolls_back_on_transaction_error(
     """При ошибке транзакции донор не сохраняется."""
     email, subscription = ad_donor_data
 
-    def _rollback_transaction():
-        """Откатить транзакцию БД."""
-        with transaction.atomic():
-            ad_donor(email, subscription)
-            raise RuntimeError("rollback")
-
     with (
         pytest.raises(RuntimeError),
         django_capture_on_commit_callbacks(
             execute=True,
         ) as callbacks,
     ):
-        _rollback_transaction()
+        _rollback_donor_transaction(email, subscription)
 
     assert not Donor.objects.filter(email=email).exists()
     assert callbacks == []
@@ -386,13 +396,13 @@ class SendPaymentEmailTest(UnisenderFixtureMixin, SimpleTestCase):
             "body": self.fake.text(),
         }
         self.template_request_fields = {
-            "format": "json",
-            "api_key": self.api_key,
+            FORMAT_FIELD: "json",
+            API_KEY_FIELD: self.api_key,
             "template_id": settings.TEMPLATE_ID,
         }
         self.email_request_fields = {
-            "format": "json",
-            "api_key": self.api_key,
+            FORMAT_FIELD: "json",
+            API_KEY_FIELD: self.api_key,
             "email": self.email,
             "sender_email": settings.DEFAULT_FROM_EMAIL,
             "sender_name": settings.UNISENDER_SENDER_NAME,
@@ -403,15 +413,15 @@ class SendPaymentEmailTest(UnisenderFixtureMixin, SimpleTestCase):
         self.template_mock = self._mock_request(
             HTTPMethod.POST,
             settings.URL_GET_TEMP,
-            {"result": self.template},
+            {RESULT_FIELD: self.template},
         )
         self.email_mock = self._mock_request(
             HTTPMethod.POST,
             settings.URL_SEND_EMAIL,
-            {"result": {"email_id": self.fake.random_int(min=1)}},
+            {RESULT_FIELD: {"email_id": self.fake.random_int(min=1)}},
         )
 
-    def test_send_payment_email_gets_template_and_sends_email(self):
+    def test_sends_email_using_fetched_template(self):
         """Письмо отправляется по шаблону, полученному из Unisender."""
         send_payment_email(self.email, self.list_id)
 
@@ -433,10 +443,10 @@ class SendRequestTest(UnisenderFixtureMixin, SimpleTestCase):
         super().setUp()
 
         self.response_data = {
-            "result": {"task_uuid": self.fake.uuid4()},
+            RESULT_FIELD: {"task_uuid": self.fake.uuid4()},
         }
         self.expected_request_fields = {
-            "api_key": self.api_key,
+            API_KEY_FIELD: self.api_key,
             "notify_url": settings.NOTIFY_URL,
             "list_id": self.list_id,
             **{
@@ -450,11 +460,11 @@ class SendRequestTest(UnisenderFixtureMixin, SimpleTestCase):
             self.response_data,
         )
 
-    def test_send_request_asks_unisender_to_export_contacts(self):
+    def test_exports_contacts_via_unisender(self):
         """Запрос на экспорт уходит в Unisender, возвращается его ответ."""
-        result = send_request(self.list_id)
+        extern_response_data = send_request(self.list_id)
 
-        assert result == self.response_data
+        assert extern_response_data == self.response_data
         self._assert_request_fields(
             self.export_mock,
             self.expected_request_fields,

@@ -2,7 +2,7 @@
 from django.contrib import admin
 from donor_base.constants import EMPTY_VALUE
 
-from .models import CloudPayment
+from cloudpayments.models import CloudPayment
 
 
 @admin.register(CloudPayment)

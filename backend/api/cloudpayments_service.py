@@ -14,21 +14,23 @@ from api.donor_service import create_or_update_donor
 logger = logging.getLogger(__name__)
 
 _CLOUDPAYMENTS_BAD_KEYS_STATUSES = frozenset(
-    {HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN},
+    (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN),
 )
 
 
 def check_donor_subscriptions(email):
     """Проверка наличия подписки у донора."""
-    url = settings.CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL
-    username = settings.CLOUDPAYMENTS_PUBLIC_ID
-    password = settings.CLOUDPAYMENTS_API_SECRET
     basic_encoded = base64.b64encode(
-        f"{username}:{password}".encode(),
+        f"{settings.CLOUDPAYMENTS_PUBLIC_ID}:"
+        f"{settings.CLOUDPAYMENTS_API_SECRET}".encode(),
     ).decode("utf-8")
     headers = {"Authorization": f"Basic {basic_encoded}"}
     body = {"accountId": f"{email}"}
-    response = http_client.request("POST", url, headers=headers, json=body)
+    response = http_client.request(
+        method="POST",
+        url=settings.CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL,
+        headers=headers,
+        json=body)
     return (
         SubscriptionStatuses.ACTIVE.capitalized
         if response.json()["Model"]

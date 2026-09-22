@@ -15,6 +15,7 @@ from celery.exceptions import Retry
 from contacts.models import Donor
 from donor_base.constants import SubscriptionStatuses
 from donor_base.subscriptions import get_group_by_capitalized
+from rest_framework import status
 
 
 @pytest.fixture(autouse=True)
@@ -61,8 +62,12 @@ def api_request():
         zapros.TimeoutError("Timed out"),
         zapros.ReadError("Read failed"),
         zapros.WriteError("Write failed"),
-        zapros.StatusCodeError(zapros.Response(status=400)),
-        zapros.StatusCodeError(zapros.Response(status=503)),
+        zapros.StatusCodeError(
+            zapros.Response(status=status.HTTP_400_BAD_REQUEST),
+        ),
+        zapros.StatusCodeError(
+            zapros.Response(status=status.HTTP_503_SERVICE_UNAVAILABLE),
+        ),
     ],
     ids=["base", "connection", "timeout", "read", "write", "400", "503"],
 )
@@ -174,10 +179,7 @@ def test_import_failure_does_not_send_email(
         ),
     )
 
-    with (
-        patch("api.tasks.send_payment_email_task.run") as send_email,
-        pytest.raises(expected_exception),
-    ):
-        workflow.apply(throw=True)
-
-    send_email.assert_not_called()
+    with patch("api.tasks.send_payment_email_task.run") as send_email:
+        with pytest.raises(expected_exception):
+            workflow.apply(throw=True)
+        send_email.assert_not_called()

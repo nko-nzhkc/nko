@@ -25,7 +25,7 @@ def donors(db, faker):
     "selection",
     ["all", "selected", "empty", "missing"],
 )
-def test_get_donors_returns_email_and_subscription(donors, selection):
+def test_get_donors_returns_use_case_data(donors, selection):
     """Репозиторий возвращает данные, нужные use case."""
     if selection == "all":
         donor_ids = None

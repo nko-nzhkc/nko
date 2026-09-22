@@ -3,6 +3,7 @@ from cloudpayments.models import CloudPayment
 from contacts.models import Contact
 from django.http import JsonResponse
 from django.views import View
+from donor_base.constants import HTTPMethod
 from forbiddenwords.models import ForbiddenWord
 from mixplat.models import MixPlat
 from rest_framework import status, viewsets
@@ -27,7 +28,11 @@ class ContactViewSet(viewsets.ModelViewSet):
     queryset = Contact.objects.all()
     serializer_class = ContactSerializer
 
-    @action(detail=False, url_path="start", methods=("post",))
+    @action(
+        detail=False,
+        url_path="start",
+        methods=(HTTPMethod.POST.value,),
+    )
     def start(self, request):
         """Запуск процесса получения контактов из Unisender."""
         return Response(
@@ -38,14 +43,11 @@ class ContactViewSet(viewsets.ModelViewSet):
     @action(
         detail=False,
         url_path="get_contacts",
-        methods=(
-            "get",
-            "post",
-        ),
+        methods=(HTTPMethod.GET.value, HTTPMethod.POST.value),
     )
     def get_contacts(self, request):
         """Метод получения контактов от Unisender."""
-        if request.method == "GET":
+        if request.method == "get":
             return Response(status=status.HTTP_200_OK)
         return Response(
             {
@@ -71,7 +73,11 @@ class MixplatViewSet(viewsets.ModelViewSet):
     queryset = MixPlat.objects.all()
     serializer_class = MixPlatSerializer
 
-    @action(detail=False, url_path="payment_status", methods=("post",))
+    @action(
+        detail=False,
+        url_path="payment_status",
+        methods=(HTTPMethod.POST.value,),
+    )
     def payment_status(self, request):
         """Метод получения данных от Mixplat."""
         return mixplat_request_handler(request)
@@ -80,7 +86,11 @@ class MixplatViewSet(viewsets.ModelViewSet):
 class CloudPaymentsViewSet(viewsets.GenericViewSet):
     """Вьюсет для Cloudpayment."""
 
-    @action(detail=False, url_path="create_cloudpayment", methods=["post"])
+    @action(
+        detail=False,
+        url_path="create_cloudpayment",
+        methods=(HTTPMethod.POST.value,),
+    )
     def create_cloudpayment(self, request):
         """Создание экземпляра Cloudpayment."""
         serializer = CloudpaymentsSerializer(
