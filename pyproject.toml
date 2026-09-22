@@ -221,7 +221,7 @@ select = ["WPS", "E99"]
 ignore = ["WPS412"]
 
 extend-exclude = [
-    "venv",
+    ".venv",
     ".vscode/",
     "docs/",
     "*/migrations/*",
