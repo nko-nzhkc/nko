@@ -194,28 +194,11 @@ DEFAULT_CONF = {
 аккаунта.
 
 Подпапка проекта donor_base это базовая директория нашего проекта. В ней в файле unisender_client.py расположен клиент 
-для низкоуровнего доступа к Unisender API. Существующая интеграция реализует метод «import_contacts»:
-```python
-cl = Client(
-    api_key=os.getenv("UNISENDER_API_KEY"),
-    platform="donor_base",
-)
-method = "import_contacts"
-data_unisender = {
-    "field_names": ["email", "Name", "email_list_ids"],
-    "data": [],
-    "overwrite_lists": 1,
-}
-```
-Источник импорта контактов модель Contact приложения contacts:
-```python
-cont = Contact.objects.all()
-data = []
-for x in cont:
-    donor_contact = [x.email, x.username, "Oldest_donors"]
-    data.append(donor_contact)
-data_unisender["data"] = data
-```
+для низкоуровнего доступа к Unisender API. Отправка данных доноров в Unisender выполняется асинхронно через Celery-задачу `send_users_to_unisender`.
+
+Для подготовки и отправки данных используется `SyncDonorsToUnisenderUseCase`. Данные доноров получает репозиторий, после чего use case отправляет их в Unisender пачками не более 500 контактов.
+
+При создании или изменении донора `ad_donor` ставит задачу отправки в очередь только после успешного сохранения транзакции в БД.
 [Другие методы Unisender API](https://www.unisender.com/ru/support/api/api)
 
 ### Логирование в проекте
