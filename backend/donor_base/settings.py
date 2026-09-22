@@ -72,7 +72,7 @@ DATABASES = {
         "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
         "HOST": os.getenv("DB_HOST", ""),
         "PORT": os.getenv("DB_PORT", 5432),
-    }
+    },
 }
 
 LOGGING = {
@@ -82,7 +82,7 @@ LOGGING = {
         "verbose": {
             "format": "{levelname} {asctime} {module} {message}",
             "style": "{",
-        }
+        },
     },
     "handlers": {
         "file": {
@@ -100,16 +100,16 @@ LOGGING = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",  # noqa: E501
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",  # ruff: ignore[line-too-long]
     },
     {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",  # noqa: E501
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",  # ruff: ignore[line-too-long]
     },
     {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",  # noqa: E501
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",  # ruff: ignore[line-too-long]
     },
     {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",  # noqa: E501
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",  # ruff: ignore[line-too-long]
     },
 ]
 
@@ -124,7 +124,7 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",  # noqa: E501
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",  # ruff: ignore[line-too-long]
     "PAGE_SIZE": 3,
 }
 
@@ -135,7 +135,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
 # Для работы на сервере
 CELERY_BROKER_URL = os.getenv(
-    "CELERY_BROKER_URL", "amqp://user:password@rabbitmq:5672//"
+    "CELERY_BROKER_URL", "amqp://user:password@rabbitmq:5672//",
 )
 
 CELERY_ACCEPT_CONTENT = ["application/json"]
@@ -153,7 +153,7 @@ CELERY_BEAT_SCHEDULE = {}
 
 CLOUDPAYMENTS_PUBLIC_ID = os.getenv("CLOUDPAYMENTS_PUBLIC_ID")
 CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL = os.getenv(
-    "CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL"
+    "CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL",
 )
 CLOUDPAYMENTS_API_SECRET = os.getenv("CLOUDPAYMENTS_API_SECRET")
 CLOUDPAYMENTS_API_TEST_URL = os.getenv("CLOUDPAYMENTS_API_TEST_URL")

@@ -1,8 +1,8 @@
 # Модуль админки модели контакты.
 from django.contrib import admin
+from donor_base.constants import EMPTY_VALUE
 
 from .models import Contact, Donor
-from donor_base.constants import EMPTY_VALUE
 
 
 @admin.register(Contact)

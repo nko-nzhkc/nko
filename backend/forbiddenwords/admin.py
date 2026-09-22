@@ -1,8 +1,8 @@
 # Модуль админки запрещенных слов.
 from django.contrib import admin
+from donor_base.constants import EMPTY_VALUE
 
 from .models import ForbiddenWord
-from donor_base.constants import EMPTY_VALUE
 
 
 @admin.register(ForbiddenWord)

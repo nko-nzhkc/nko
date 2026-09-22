@@ -24,7 +24,7 @@ class Client:
                 result.update(self._build_request_data(val, _key))
             elif isinstance(val, list):
                 result.update(
-                    self._build_request_data(dict(enumerate(val)), _key)
+                    self._build_request_data(dict(enumerate(val)), _key),
                 )
             elif val is not None:
                 result[_key] = val
@@ -56,7 +56,7 @@ class Client:
         return http_client.post_form(url, data)
 
     def send_contacts_to_unisender(
-        self, field_names, data, overwrite_lists=0
+        self, field_names, data, overwrite_lists=0,
     ):
         """Отправляет контакты в Unisender."""
         return self._api_request(

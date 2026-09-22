@@ -1,8 +1,8 @@
 # Модуль админки модели пожертвований Cloudpayment.
 from django.contrib import admin
+from donor_base.constants import EMPTY_VALUE
 
 from .models import CloudPayment
-from donor_base.constants import EMPTY_VALUE
 
 
 @admin.register(CloudPayment)

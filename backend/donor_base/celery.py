@@ -1,6 +1,7 @@
-import django
-import os
 import logging
+import os
+
+import django
 from celery import Celery
 
 logger = logging.getLogger("Celery_logger")
@@ -8,7 +9,7 @@ logger.setLevel(logging.INFO)
 handler = logging.FileHandler("celery.log")
 handler.setLevel(logging.INFO)
 formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 handler.setFormatter(formatter)
 logger.addHandler(handler)

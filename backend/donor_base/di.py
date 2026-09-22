@@ -13,10 +13,10 @@ class AppProvider(dishka.Provider):
     """Провайдер зависимостей приложения."""
 
     @dishka.provide(scope=dishka.Scope.APP)
-    def http_client(self) -> Generator[zapros.Client, None, None]:
+    def http_client(self) -> Generator[zapros.Client]:
         """Создаёт и закрывает общий HTTP-клиент."""
         client = zapros.Client(
-            handler=zapros.RedirectMiddleware(zapros.StdNetworkHandler())
+            handler=zapros.RedirectMiddleware(zapros.StdNetworkHandler()),
         )
         yield client
         client.close()

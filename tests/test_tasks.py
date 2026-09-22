@@ -4,15 +4,14 @@ from unittest.mock import patch
 
 import pytest
 import zapros
-from celery import chain
-from celery.app.task import Task
-from celery.exceptions import Retry
-
 from api.tasks import (
     send_payment_email_task,
     send_users_to_unisender,
 )
 from api.use_cases import UNISENDER_FIELD_NAMES
+from celery import chain
+from celery.app.task import Task
+from celery.exceptions import Retry
 from contacts.models import Donor
 from donor_base.constants import SubscriptionStatuses
 from donor_base.subscriptions import get_group_by_capitalized
@@ -40,7 +39,7 @@ def donors(db, faker):
         )
         for subscription in (
             SubscriptionStatuses.ACTIVE.capitalized,
-            SubscriptionStatuses.INACTIVE.capitalized
+            SubscriptionStatuses.INACTIVE.capitalized,
         )
     ]
 
@@ -49,7 +48,7 @@ def donors(db, faker):
 def api_request():
     """Изолирует отправку запроса во внешний Unisender."""
     with patch(
-        "donor_base.unisender_client.Client._api_request"
+        "donor_base.unisender_client.Client._api_request",
     ) as request:
         yield request
 

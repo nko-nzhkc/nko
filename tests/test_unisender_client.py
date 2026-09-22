@@ -3,7 +3,6 @@
 from unittest.mock import patch
 
 import pytest
-
 from donor_base.unisender_client import Client
 
 

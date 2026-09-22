@@ -3,7 +3,6 @@
 from unittest.mock import patch
 
 import pytest
-
 from api.repositories import DonorRepository
 from api.use_cases import (
     UNISENDER_BATCH_SIZE,
@@ -37,7 +36,7 @@ def donor_factory(db, faker):
 def api_request():
     """Изолирует отправку запроса во внешний Unisender."""
     with patch(
-        "donor_base.unisender_client.Client._api_request"
+        "donor_base.unisender_client.Client._api_request",
     ) as request:
         yield request
 
@@ -119,7 +118,7 @@ def test_execute_passes_filter_and_overwrite_lists(
     overwrite_lists,
     donor_factory,
     use_case,
-    api_request
+    api_request,
 ):
     """Сценарий передаёт фильтр и сохраняет режим обновления."""
     donors = donor_factory(2)

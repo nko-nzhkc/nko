@@ -1,7 +1,6 @@
 """Тесты репозиториев API."""
 
 import pytest
-
 from api.repositories import DonorRepository
 from contacts.models import Donor
 from donor_base.constants import SubscriptionStatuses
@@ -17,7 +16,7 @@ def donors(db, faker):
         )
         for subscription in (
             SubscriptionStatuses.ACTIVE.capitalized,
-            SubscriptionStatuses.INACTIVE.capitalized
+            SubscriptionStatuses.INACTIVE.capitalized,
         )
     ]
 
@@ -42,7 +41,7 @@ def test_get_donors_returns_email_and_subscription(donors, selection):
         expected_donors = []
 
     actual = list(
-        DonorRepository().get_donors(donor_ids=donor_ids)
+        DonorRepository().get_donors(donor_ids=donor_ids),
     )
     expected = [
         (donor.email, donor.subscription)

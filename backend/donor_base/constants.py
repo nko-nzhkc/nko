@@ -35,7 +35,6 @@ class SubscriptionStatuses(Enum):
 
         Нужно для быстрого обращения к атрибутам констант.
         """
-
         obj = object.__new__(cls)
         obj._value_ = (verbosed, capitalized, group_id)
         obj.verbosed = verbosed
@@ -46,7 +45,7 @@ class SubscriptionStatuses(Enum):
 
 NEGATIVE_SUB_STAT = (
     SubscriptionStatuses.LOST.capitalized,
-    SubscriptionStatuses.INACTIVE.capitalized
+    SubscriptionStatuses.INACTIVE.capitalized,
     )
 
 PAYMENT_METHOD_LENGTH = 64

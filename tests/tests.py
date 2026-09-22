@@ -5,21 +5,20 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 import dishka
-import zapros
 import pytest
-from django.conf import settings
-from django.test import SimpleTestCase
-from django.db import transaction
+import zapros
+from api.utils import ad_donor, send_payment_email, send_request
 from contacts.models import Donor
+from django.conf import settings
+from django.db import transaction
+from django.test import SimpleTestCase
 from donor_base import di
-from donor_base.unisender_client import Client
 from donor_base.constants import SubscriptionStatuses
 from donor_base.subscriptions import get_group_by_capitalized
+from donor_base.unisender_client import Client
 from faker import Faker
 from zapros.matchers import path
 from zapros.mock import Mock, MockMiddleware, MockRouter
-
-from api.utils import ad_donor, send_payment_email, send_request
 
 CONTACT_FIELDS = ["email", "email_list_ids"]
 
@@ -48,13 +47,13 @@ def expected_import_request_fields(
         {
             f"field_names[{index}]": field
             for index, field in enumerate(CONTACT_FIELDS)
-        }
+        },
     )
     fields.update(
         {
             f"data[0][{index}]": value
             for index, value in enumerate(contact_values)
-        }
+        },
     )
 
     return fields
@@ -91,7 +90,7 @@ class UnisenderFixtureMixin:
         parsed = urlsplit(url)
         matcher = path(parsed.path).method(method).host(parsed.hostname)
         mock = Mock.given(matcher).respond(
-            zapros.Response(status=status, json=response_data)
+            zapros.Response(status=status, json=response_data),
         )
         self.router.add(mock)
         return mock
@@ -191,7 +190,6 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
 @pytest.fixture
 def ad_donor_data(db, faker):
     """Настраивает данные для проверки сохранения и workflow."""
-
     return faker.unique.email(), SubscriptionStatuses.ACTIVE.capitalized
 
 

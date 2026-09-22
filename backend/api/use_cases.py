@@ -4,7 +4,6 @@ from itertools import islice
 
 from donor_base.subscriptions import get_group_by_capitalized
 
-
 UNISENDER_BATCH_SIZE = 500
 UNISENDER_FIELD_NAMES = ["email", "email_list_ids"]
 

@@ -4,33 +4,34 @@ import base64
 import csv
 import logging
 import os
+import pathlib
 import shutil
 from datetime import datetime
-from http import HTTPMethod, HTTPStatus
 from functools import partial
-from django.db import transaction
+from http import HTTPMethod, HTTPStatus
 
 import zapros
 from celery import chain
+from contacts.models import Donor
 from django.conf import settings
+from django.db import transaction
 from django.db.models import F
 from django.utils.timezone import make_aware
-from rest_framework import status
-from rest_framework.response import Response
-
-from contacts.models import Donor
 from donor_base import http_client
-from mixplat.models import MixPlat
 from donor_base.constants import (
-    BAD_PAYMENTS_COUNT, DATE_FORMAT,
+    BAD_PAYMENTS_COUNT,
+    DATE_FORMAT,
     NEGATIVE_SUB_STAT,
     PaymentStatuses,
-    SubscriptionStatuses
+    SubscriptionStatuses,
 )
 from donor_base.subscriptions import (
+    get_capitalized_by_group_id,
     get_group_by_capitalized,
-    get_capitalized_by_group_id
 )
+from mixplat.models import MixPlat
+from rest_framework import status
+from rest_framework.response import Response
 
 from api.tasks import (
     send_payment_email_task,
@@ -40,7 +41,7 @@ from api.tasks import (
 logger = logging.getLogger(__name__)
 
 _CLOUDPAYMENTS_BAD_KEYS_STATUSES = frozenset(
-    {HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN}
+    {HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN},
 )
 
 
@@ -86,7 +87,7 @@ def ad_donor(
             )
 
         transaction.on_commit(
-            partial(workflow.apply_async)
+            partial(workflow.apply_async),
         )
 
 
@@ -129,7 +130,7 @@ def check_donor_subscriptions(email):
     username = settings.CLOUDPAYMENTS_PUBLIC_ID
     password = settings.CLOUDPAYMENTS_API_SECRET
     basic_encoded = base64.b64encode(
-        f"{username}:{password}".encode("utf-8")
+        f"{username}:{password}".encode(),
     ).decode("utf-8")
     headers = {"Authorization": f"Basic {basic_encoded}"}
     body = {"accountId": f"{email}"}
@@ -178,7 +179,7 @@ def create_or_update_donor(data, subscription):
             )
             logger.info(
                 f"Создан Донор {data['email']} "
-                f"{SubscriptionStatuses.INACTIVE.capitalized}"
+                f"{SubscriptionStatuses.INACTIVE.capitalized}",
             )
         # Если подписка активна:
         elif subscription == SubscriptionStatuses.ACTIVE.capitalized:
@@ -190,7 +191,7 @@ def create_or_update_donor(data, subscription):
             )
             logger.info(
                 f"Создан Донор {data['email']} "
-                f"{SubscriptionStatuses.ACTIVE.capitalized}"
+                f"{SubscriptionStatuses.ACTIVE.capitalized}",
             )
     # Если донор есть в базе смотрим статус платежа
     else:
@@ -209,37 +210,36 @@ def create_or_update_donor(data, subscription):
                     )
                     logger.info(
                         f"У Донора {data['email']} обновлен статус "
-                        f"на {SubscriptionStatuses.LOST.capitalized}"
+                        f"на {SubscriptionStatuses.LOST.capitalized}",
                     )
                 else:
                     Donor.objects.filter(email=data["email"]).update(
-                        count_declined=F("count_declined") + 1
+                        count_declined=F("count_declined") + 1,
                     )
         # Если платеж успешный, обновляем запись
-        else:
-            # если активная подписка
-            if subscription == SubscriptionStatuses.ACTIVE.capitalized:
-                # если старый статус "Lost", "Inactive"
-                if donor.subscription in NEGATIVE_SUB_STAT:
-                    # Обновляем его статус на "Active"
-                    ad_donor(
-                        data["email"],
-                        SubscriptionStatuses.ACTIVE.capitalized,
-                        update=True,
-                        send_email=True,
-                    )
-                    logger.info(
-                        f"У Донора {data['email']} обновлен статус "
-                        f"{SubscriptionStatuses.ACTIVE.capitalized}"
-                    )
-                else:
-                    Donor.objects.filter(email=data["email"]).update(
-                        count_declined=0
-                    )
+        # если активная подписка
+        elif subscription == SubscriptionStatuses.ACTIVE.capitalized:
+            # если старый статус "Lost", "Inactive"
+            if donor.subscription in NEGATIVE_SUB_STAT:
+                # Обновляем его статус на "Active"
+                ad_donor(
+                    data["email"],
+                    SubscriptionStatuses.ACTIVE.capitalized,
+                    update=True,
+                    send_email=True,
+                )
+                logger.info(
+                    f"У Донора {data['email']} обновлен статус "
+                    f"{SubscriptionStatuses.ACTIVE.capitalized}",
+                )
             else:
                 Donor.objects.filter(email=data["email"]).update(
-                    count_declined=0
+                    count_declined=0,
                 )
+        else:
+            Donor.objects.filter(email=data["email"]).update(
+                count_declined=0,
+            )
 
 
 def check_cloudpayments_connection():
@@ -257,7 +257,7 @@ def check_cloudpayments_connection():
             raise
         logger.info(
             f"Cloudpayments отклонил запрос, статус: "
-            f"{error.response.status}"
+            f"{error.response.status}",
         )
         return False
     return True
@@ -272,7 +272,7 @@ def _extract_unisender_result(response_data, error_label="Ошибка:"):
         return None
     if "result" in response_data:
         return response_data["result"]
-    logger.info(f"Неизвестный ответ от сервера: {response_data}")
+    logger.info("Неизвестный ответ от сервера: %s", response_data)
     return None
 
 
@@ -285,7 +285,7 @@ def send_payment_email(email, list_id):
     }
     response = http_client.post_form(settings.URL_GET_TEMP, data)
     template = _extract_unisender_result(
-        response.json, "Ошибка при запросе шаблона:"
+        response.json, "Ошибка при запросе шаблона:",
     )
     if template is None:
         return
@@ -301,7 +301,7 @@ def send_payment_email(email, list_id):
     }
     response = http_client.post_form(settings.URL_SEND_EMAIL, data)
     result = _extract_unisender_result(
-        response.json, "Ошибка при отправке сообщения:"
+        response.json, "Ошибка при отправке сообщения:",
     )
     if result is not None:
         logger.info("Сообщение успешно отправлено!")
@@ -323,7 +323,7 @@ def send_request(list_id):
     if result is None:
         return None
     logger.info("Успешно!")
-    logger.info(f"result: {result}")
+    logger.info("result: %s", result)
     return response_data
 
 
@@ -337,21 +337,20 @@ def add_contacts(file_url):
 
     bulk_list = list()
     directory = "files"
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    if not pathlib.Path(directory).exists():
+        pathlib.Path(directory).mkdir(parents=True)
     file_path = os.path.join(directory, "data.csv")
 
-    with open(file_path, "wb") as file:
-        file.write(response.read())
+    pathlib.Path(file_path).write_bytes(response.read())
 
-    with open(file_path, encoding="utf-8") as csv_file:
+    with pathlib.Path(file_path).open(encoding="utf-8") as csv_file:
         file_reader = csv.reader(csv_file, delimiter=",")
         for row in file_reader:
             if row[0] != "email" and donor_exists(row[0]) is False:
                 bulk_list.append(
                     Donor(
                         email=row[0],
-                        subscription=get_capitalized_by_group_id(row[1])
+                        subscription=get_capitalized_by_group_id(row[1]),
                     ),
                 )
         Donor.objects.bulk_create(bulk_list)

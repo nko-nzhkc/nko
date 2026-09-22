@@ -1,6 +1,10 @@
 # Модуль представлений проекта.
+from cloudpayments.models import CloudPayment
+from contacts.models import Contact
 from django.http import JsonResponse
 from django.views import View
+from forbiddenwords.models import ForbiddenWord
+from mixplat.models import MixPlat
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -8,9 +12,9 @@ from rest_framework.response import Response
 from .mixins import ViewListCreateMixinsSet
 from .permissions import IsAdmin
 from .serializers import (
+    CloudpaymentsSerializer,
     ContactSerializer,
     ForbiddenwordSerializer,
-    CloudpaymentsSerializer,
     MixPlatSerializer,
 )
 from .utils import (
@@ -19,10 +23,6 @@ from .utils import (
     mixplat_request_handler,
     send_request,
 )
-from contacts.models import Contact
-from forbiddenwords.models import ForbiddenWord
-from mixplat.models import MixPlat
-from cloudpayments.models import CloudPayment
 
 
 class ContactViewSet(viewsets.ModelViewSet):
@@ -53,7 +53,7 @@ class ContactViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_200_OK)
         return Response(
             dict(
-                result=add_contacts(request.data["result"]["file_to_download"])
+                result=add_contacts(request.data["result"]["file_to_download"]),
             ),
             status=status.HTTP_200_OK,
         )
@@ -91,7 +91,7 @@ class CloudPaymentsViewSet(viewsets.GenericViewSet):
         Создание экземпляра Cloudpayment.
         """
         serializer = CloudpaymentsSerializer(
-            data=handling_cloudpayment_data(request)
+            data=handling_cloudpayment_data(request),
         )
         if serializer.is_valid():
             serializer.save()

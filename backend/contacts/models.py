@@ -1,12 +1,13 @@
 # Модуль модели контактов.
+from api.validators import forbidden_words_validator
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-
-from api.validators import forbidden_words_validator
-
 from donor_base.constants import (
-    DEFAULT_DONATION, MAX_USERNAME_LENGTH, MAX_EMAIL_LENGTH,
-    MAX_SUBJECT_LENGTH, SubscriptionStatuses
+    DEFAULT_DONATION,
+    MAX_EMAIL_LENGTH,
+    MAX_SUBJECT_LENGTH,
+    MAX_USERNAME_LENGTH,
+    SubscriptionStatuses,
 )
 
 
@@ -26,7 +27,7 @@ class Contact(AbstractUser):
         verbose_name="Электронная почта",
     )
     subject = models.CharField(
-        max_length=MAX_SUBJECT_LENGTH, verbose_name="Тема письма"
+        max_length=MAX_SUBJECT_LENGTH, verbose_name="Тема письма",
     )
     comment = models.TextField(verbose_name="Комментарий")
 
@@ -37,7 +38,7 @@ class Contact(AbstractUser):
             models.UniqueConstraint(
                 fields=["username", "email"],
                 name="Уникальное имя пользователя и электронная почта",
-            )
+            ),
         ]
 
     def __str__(self):

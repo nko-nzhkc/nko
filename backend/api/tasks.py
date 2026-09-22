@@ -1,11 +1,11 @@
 """Celery-задачи API."""
 
 import zapros
+from donor_base import di
+from donor_base.celery import app
 
 from api.repositories import DonorRepository
 from api.use_cases import SyncDonorsToUnisenderUseCase
-from donor_base import di
-from donor_base.celery import app
 
 
 @app.task(
