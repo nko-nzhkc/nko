@@ -1,3 +1,51 @@
+[project]
+name = "nko-backend"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Marat Kabardokov", email = "kabardokov.m@yandex.ru"}
+]
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "amqp (>=5.3,<6.0)",
+    "celery (>=5.6,<6.0)",
+    "django (>=5,<6)",
+    "django-cors-headers (>=4.9,<5.0)",
+    "djangorestframework (>=3.18,<4.0)",
+    "python-dotenv (>=1.2,<2.0)",
+    "requests (>=2.34,<3.0)",
+    "whitenoise (>=6.12,<7.0)",
+    "psycopg2-binary (>=2.9,<3.0)",
+    "filelock (>=3.32,<4.0)",
+    "dishka (>=1.10.1,<2.0.0)",
+    "zapros (>=0.17.0,<0.18.0)",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit (>=4.6,<5.0)",
+    "pytest (>=9.1,<10.0)",
+    "pytest-django (>=4.14,<5.0)",
+    "flake8 (>=7,<8)",
+    "faker (>=40.39.0,<41.0.0)",
+    "flake8-pyproject (>=1.2.4,<2.0.0)",
+    "mypy (>=2.3.1,<3.0.0)",
+    "django-stubs[compatible-mypy] (>=6.1.1,<7.0.0)",
+    "djangorestframework-stubs[compatible-mypy] (>=3.18.1,<4.0.0)",
+    "wemake-python-styleguide (>=1.8.1,<2.0.0)",
+    "ruff (>=0.16.8,<1.0.0)",
+]
+production = [
+    "gunicorn (>=21.0,<22.0)",
+]
+
+[tool.poetry]
+package-mode = false
+
+[build-system]
+requires = ["poetry-core>=2.0,<3.0"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["backend"]
@@ -59,7 +107,7 @@ preview = true
 fix = true
 
 [tool.ruff.format]
-quote-style = "single"
+quote-style = "double"
 docstring-code-format = true
 
 [tool.ruff.lint]
@@ -100,7 +148,7 @@ select = [
   "SIM",
   "SLF",
   "SLOT",
-  "T100",
+  "debugger",
   "TID",
   "TRY",
   "UP",
@@ -108,36 +156,41 @@ select = [
   "YTT",
 ]
 ignore = [
-  "A005",
-  "D100",
-  "D104",
-  "D106",
-  "D203",
-  "D212",
-  "D401",
-  "D404",
-  "D405",
-  "D418",
-  "DJ008",
-  "ISC001",
-  "ISC003",
-  "PLC0414",
+  "stdlib-module-shadowing",
+  "undocumented-public-module",
+  "undocumented-public-package",
+  "undocumented-public-nested-class",
+  "incorrect-blank-line-before-class",
+  "multi-line-summary-first-line",
+  "non-imperative-mood",
+  "docstring-starts-with-this",
+  "non-capitalized-section-name",
+  "overload-with-docstring",
+  "django-model-without-dunder-str",
+  "single-line-implicit-string-concatenation",
+  "explicit-string-concatenation",
+  "useless-import-alias",
   "PLR09",
-  "PLR2004",
-  "PLR6301",
-  "PLW2901",
-  "RUF029",
-  "RUF067",
-  "TRY003",
+  "magic-value-comparison",
+  "no-self-use",
+  "redefined-loop-name",
+  "unused-async",
+  "non-empty-init-module",
+  "raise-vanilla-args",
+  "ambiguous-unicode-character-docstring",
+  "import-outside-top-level",
 ]
 external = [ "WPS" ]
 
 flake8-gettext.extend-function-names = [ "_" ]
-flake8-quotes.inline-quotes = "single"
+flake8-quotes.inline-quotes = "double"
 
 isort.known-first-party = [ "server", "examples" ]
 mccabe.max-complexity = 6
 pydocstyle.convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["assert"]
 
 [tool.flake8]
 format = "wemake"
