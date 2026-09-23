@@ -36,32 +36,31 @@ def ad_donor(
     send_email=False,
 ):
     """Сохраняет донора и планирует импорт, затем при необходимости письмо."""
-    with transaction.atomic():
-        donor_obj, _ = Donor.objects.update_or_create(
-            email=donor_email,
-            defaults={
-                "subscription": subscription,
-                "count_declined": 0,
-            },
+    donor_obj, _ = Donor.objects.update_or_create(
+        email=donor_email,
+        defaults={
+            "subscription": subscription,
+            "count_declined": 0,
+        },
+    )
+
+    workflow = send_users_to_unisender.si(
+        donor_ids=[donor_obj.pk],
+        overwrite_lists=1 if update else 0,
+    )
+
+    if send_email:
+        workflow = chain(
+            workflow,
+            send_payment_email_task.si(
+                email=donor_obj.email,
+                list_id=get_group_by_capitalized(subscription),
+            ),
         )
 
-        workflow = send_users_to_unisender.si(
-            donor_ids=[donor_obj.pk],
-            overwrite_lists=1 if update else 0,
-        )
-
-        if send_email:
-            workflow = chain(
-                workflow,
-                send_payment_email_task.si(
-                    email=donor_obj.email,
-                    list_id=get_group_by_capitalized(subscription),
-                ),
-            )
-
-        transaction.on_commit(
-            partial(workflow.apply_async),
-        )
+    transaction.on_commit(
+        partial(workflow.apply_async),
+    )
 
 
 def _handle_failed_payment(donor_email, donor):

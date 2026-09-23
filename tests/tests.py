@@ -226,10 +226,10 @@ def chain_factory():
         yield factory
 
 
-def _rollback_donor_transaction(email, subscription):
+def _rollback_donor_transaction(email, subscription, update):
     """Откатывает транзакцию БД после вызова ad_donor (для теста ошибки)."""
     with transaction.atomic():
-        ad_donor(email, subscription, update=False)
+        ad_donor(email, subscription, update=update)
         raise RuntimeError("rollback")
 
 
@@ -290,6 +290,7 @@ def test_ad_donor_uses_overwrite_lists_for_update(
     signature.apply_async.assert_called_once_with()
 
 
+@pytest.mark.django_db(transaction=True)
 def test_ad_donor_skips_task_before_commit(
     ad_donor_data,
     sync_task,
@@ -299,18 +300,15 @@ def test_ad_donor_skips_task_before_commit(
     email, subscription = ad_donor_data
     signature = sync_task.si.return_value
 
-    with django_capture_on_commit_callbacks(
-        execute=False,
-    ) as callbacks:
-        ad_donor(email, subscription, update=False)
+    with transaction.atomic():
+        with django_capture_on_commit_callbacks(
+            execute=False,
+        ) as callbacks:
+            ad_donor(email, subscription, update=False)
+            signature.apply_async.assert_not_called()
 
+        assert len(callbacks) == 1
         signature.apply_async.assert_not_called()
-        recorded_callbacks = list(callbacks)
-
-    assert len(recorded_callbacks) == 1
-    signature.apply_async.assert_not_called()
-
-    recorded_callbacks[0]()
 
     signature.apply_async.assert_called_once_with()
 

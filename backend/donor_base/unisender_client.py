@@ -48,7 +48,7 @@ class Client:
     def _merge_value(self, target, full_key, field_value):
         if isinstance(field_value, dict):
             target.update(self._build_request_data(field_value, full_key))
-        elif isinstance(field_value, list):
+        elif isinstance(field_value, (list, tuple)):
             target.update(
                 self._build_request_data(
                     dict(enumerate(field_value)),
