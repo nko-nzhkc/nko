@@ -40,7 +40,7 @@ class Client:
         }
         for key, field_value in data.items():
             full_key = (
-                f"{extra_key}[{key}]" if isinstance(extra_key, str) else key,
+                f"{extra_key}[{key}]" if isinstance(extra_key, str) else key
             )
             self._merge_value(default_request_data, full_key, field_value)
         return default_request_data

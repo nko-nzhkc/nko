@@ -47,8 +47,11 @@ requires = ["poetry-core>=2.0,<3.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "donor_base.settings"
+django_find_project = false
 testpaths = ["tests"]
 pythonpath = ["backend"]
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
 
 [tool.mypy]
 python_version = "3.13"

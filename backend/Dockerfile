@@ -18,6 +18,4 @@ COPY backend/ .
 
 COPY tests/ ./tests/
 
-COPY pytest.ini .
-
 CMD ["poetry", "run", "gunicorn", "--bind", "0.0.0.0:8000", "--access-logfile" , "-", "donor_base.wsgi"]

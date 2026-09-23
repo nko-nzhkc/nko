@@ -229,7 +229,7 @@ def chain_factory():
 def _rollback_donor_transaction(email, subscription):
     """Откатывает транзакцию БД после вызова ad_donor (для теста ошибки)."""
     with transaction.atomic():
-        ad_donor(email, subscription)
+        ad_donor(email, subscription, update=False)
         raise RuntimeError("rollback")
 
 
@@ -242,7 +242,7 @@ def test_ad_donor_saves_donor_and_publishes_task(
     email, subscription = ad_donor_data
 
     with django_capture_on_commit_callbacks(execute=True):
-        ad_donor(email, subscription)
+        ad_donor(email, subscription, update=False)
 
     donor = Donor.objects.get(email=email)
 
@@ -302,7 +302,7 @@ def test_ad_donor_skips_task_before_commit(
     with django_capture_on_commit_callbacks(
         execute=False,
     ) as callbacks:
-        ad_donor(email, subscription)
+        ad_donor(email, subscription, update=False)
 
         signature.apply_async.assert_not_called()
         recorded_callbacks = list(callbacks)
@@ -329,7 +329,7 @@ def test_ad_donor_rolls_back_on_transaction_error(
             execute=True,
         ) as callbacks,
     ):
-        _rollback_donor_transaction(email, subscription)
+        _rollback_donor_transaction(email, subscription, update=False)
 
     assert not Donor.objects.filter(email=email).exists()
     assert callbacks == []
@@ -350,6 +350,7 @@ def test_ad_donor_publishes_email_after_unisender(
         ad_donor(
             email,
             subscription,
+            update=False,
             send_email=True,
         )
 
