@@ -68,7 +68,10 @@ show_column_numbers = true
 warn_unreachable = true
 extra_checks = true
 strict_equality_for_none = true
-exclude = "^backend/.*/migrations/.*$"
+exclude = [
+    "^backend/.*/migrations/.*$",
+    "^tests/.*$",
+]
 
 enable_error_code = [
   "deprecated",
@@ -91,14 +94,6 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "faker.*"
 ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["api.tests", "api.tests.*", "pytest.*", "*.tests", "*.tests.*"]
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "*.migrations.*"
-ignore_errors = true
 
 [tool.django-stubs]
 django_settings_module = "donor_base.settings"
