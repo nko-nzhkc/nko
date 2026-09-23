@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 class DonorPayload(TypedDict):
     """Минимальные данные донора, используемые сервисом."""
+
     email: str
     status: str
 

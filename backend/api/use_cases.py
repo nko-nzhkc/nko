@@ -1,4 +1,5 @@
 """Сценарии API."""
+
 from collections.abc import Iterable, Iterator
 from itertools import islice
 from typing import Any, Protocol, TypeVar
@@ -10,6 +11,7 @@ T = TypeVar("T")
 
 class DonorRepository(Protocol):
     """Протокол репозитория доноров."""
+
     def get_donors(
         self,
         donor_ids: Iterable[int] | None = ...,
@@ -20,6 +22,7 @@ class DonorRepository(Protocol):
 
 class UnisenderClient(Protocol):
     """Протокол клиента Unisender."""
+
     def send_contacts_to_unisender(
         self,
         *,

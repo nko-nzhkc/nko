@@ -20,3 +20,13 @@ repos:
     hooks:
       - id: ruff
       - id: ruff-format
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: poetry run mypy
+        language: system
+        types: [python]
+        args: [--config-file=pyproject.toml]
+        require_serial: true
+        exclude: ^(backend/.*/migrations/.*|tests/.*)

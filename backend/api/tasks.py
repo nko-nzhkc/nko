@@ -8,13 +8,14 @@ from api.repositories import DonorRepository
 from api.use_cases import SyncDonorsToUnisenderUseCase
 
 
-@app.task(  # type: ignore[untyped-decorator]
+@app.task(  # type: ignore[misc]
     autoretry_for=(zapros.ZaprosError,),
     max_retries=2,
 )
 def send_users_to_unisender(
     donor_ids: list[int] | None = None,
-    overwrite_lists: int = 1) -> None:
+    overwrite_lists: int = 1,
+) -> None:
     """Отправляет доноров с повтором при ошибках zapros."""
     use_case = SyncDonorsToUnisenderUseCase(
         repository=DonorRepository(),
@@ -26,7 +27,7 @@ def send_users_to_unisender(
     )
 
 
-@app.task  # type: ignore[untyped-decorator]
+@app.task  # type: ignore[misc]
 def send_payment_email_task(
     email: str,
     list_id: int,

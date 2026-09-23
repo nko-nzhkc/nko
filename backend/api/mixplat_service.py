@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 class MixplatRequestData(TypedDict):
     """Класс реквеста Mixplat."""
+
     user_email: str
     amount: str
     amount_user: str
@@ -37,6 +38,7 @@ class MixplatRequestData(TypedDict):
 
 class MixPlatPayload(TypedDict):
     """Полезная нагрузка для сохранения Mixplat/донора."""
+
     email: str
     donat: str
     custom_donat: str

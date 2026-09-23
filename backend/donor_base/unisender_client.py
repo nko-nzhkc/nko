@@ -11,6 +11,7 @@ load_dotenv()
 
 class UnisenderConfig(TypedDict, total=False):
     """Конфигурация клиента Unisender."""
+
     api_key: str
     platform: str | None
     format: str
@@ -29,7 +30,8 @@ class Client:
     ) -> None:
         """Инициализирует настройки, не меняя settings.DEFAULT_CONF."""
         self._config: UnisenderConfig = cast(
-            UnisenderConfig, settings.DEFAULT_CONF.copy(),
+            UnisenderConfig,
+            settings.DEFAULT_CONF.copy(),
         )
         self._config["api_key"] = api_key
         self._config["platform"] = platform
