@@ -1,18 +1,20 @@
 """Общий HTTP-клиент проекта."""
 
+from collections.abc import Mapping
 from http import HTTPMethod
+from typing import Any
 
 from donor_base import di
 
 HTTP_TIMEOUT = 30.0
 
 
-def _stringify_pair(key, field):
+def _stringify_pair(key: Any, field: Any) -> tuple[str, str]:
     """Преобразует пару ключ-значение в строки."""
     return str(key), str(field)
 
 
-def _stringify_form_fields(data):
+def _stringify_form_fields(data: Mapping[Any, Any]) -> dict[str, str]:
     """Преобразует данные в строковые поля формы."""
     return dict(
         _stringify_pair(key, field)
@@ -21,7 +23,7 @@ def _stringify_form_fields(data):
     )
 
 
-def request(method, url, **kwargs):
+def request(method: HTTPMethod, url: str, **kwargs: Any) -> Any:
     """Выполняет HTTP-запрос и проверяет его статус."""
     kwargs.setdefault(
         "context",
@@ -32,6 +34,6 @@ def request(method, url, **kwargs):
     return response
 
 
-def post_form(url, data):
+def post_form(url: str, data: Mapping[Any, Any]) -> Any:
     """Отправляет данные как application/x-www-form-urlencoded."""
     return request(HTTPMethod.POST, url, form=_stringify_form_fields(data))

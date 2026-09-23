@@ -4,7 +4,7 @@ _group_id2name_map: dict[str, SubscriptionStatuses] = {}
 _capitalized2group_id: dict[str, SubscriptionStatuses] = {}
 
 
-def get_capitalized_by_group_id(group_id: str):
+def get_capitalized_by_group_id(group_id: str) -> str:
     """Словарь с кэшем для получения capitalized значения по id группы."""
     if not _group_id2name_map:
         _group_id2name_map.update(
@@ -18,7 +18,7 @@ def get_capitalized_by_group_id(group_id: str):
         ) from error
 
 
-def get_group_by_capitalized(capitalized: str):
+def get_group_by_capitalized(capitalized: str) -> str:
     """Словарь с кэшем для получения id группы значения по capitalized."""
     if not _capitalized2group_id:
         _capitalized2group_id.update(

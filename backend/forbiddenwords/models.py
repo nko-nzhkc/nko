@@ -1,4 +1,6 @@
 # Модуль модели запрещенных слов.
+from typing import override
+
 from django.db import models
 from donor_base.constants import MAX_FORBIDDEN_WORLD_LENGTH
 
@@ -16,6 +18,7 @@ class ForbiddenWord(models.Model):
         verbose_name = "Запрещенное слово"
         verbose_name_plural = "Запрещенные слова"
 
-    def __str__(self):
+    @override
+    def __str__(self) -> str:
         """Строковое представление для модели ForbiddenWord."""
         return self.forbidden_word

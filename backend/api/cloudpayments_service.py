@@ -3,13 +3,15 @@
 import base64
 import logging
 from http import HTTPMethod, HTTPStatus
+from typing import Any, cast
 
 import zapros
 from django.conf import settings
 from donor_base import http_client
 from donor_base.constants import SubscriptionStatuses
+from rest_framework.request import Request
 
-from api.donor_service import create_or_update_donor
+from api.donor_service import DonorPayload, create_or_update_donor
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,7 @@ _CLOUDPAYMENTS_BAD_KEYS_STATUSES = frozenset(
 )
 
 
-def check_donor_subscriptions(email):
+def check_donor_subscriptions(email: str) -> str:
     """Проверка наличия подписки у донора."""
     basic_encoded = base64.b64encode(
         f"{settings.CLOUDPAYMENTS_PUBLIC_ID}:"
@@ -27,7 +29,7 @@ def check_donor_subscriptions(email):
     headers = {"Authorization": f"Basic {basic_encoded}"}
     body = {"accountId": f"{email}"}
     response = http_client.request(
-        method="POST",
+        method=HTTPMethod.POST,
         url=settings.CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL,
         headers=headers,
         json=body,
@@ -39,13 +41,13 @@ def check_donor_subscriptions(email):
     )
 
 
-def handling_cloudpayment_data(request):
+def handling_cloudpayment_data(request: Request) -> dict[str, Any]:
     """Формирование данных для сериализатора CloudpaymentsSerializer."""
     # Предполагаем, что request.data содержит json-объект,
     # т.е. ответ сервиса Cloudpayments при запросе на создании платежа.
     if isinstance(request.data, dict) and "Model" in request.data:
         model = request.data["Model"][0]
-        data = {
+        data: dict[str, Any] = {
             "email": model.get("Email"),
             "donat": model.get("Amount"),
             "date_created": model.get("CreatedDateIso"),
@@ -58,15 +60,17 @@ def handling_cloudpayment_data(request):
             "currency": model.get("Currency"),
         }
         subscription = check_donor_subscriptions(data["email"])
-        create_or_update_donor(data, subscription)
+        create_or_update_donor(cast(DonorPayload, data), subscription)
         return data
     logger.info("Неправильная структура request.data")
     raise ValueError("Неправильная структура request.data")
 
 
-def check_cloudpayments_connection():
+def check_cloudpayments_connection() -> bool:
     """Проверяет подключение к API CloudPayments."""
     url = settings.CLOUDPAYMENTS_API_TEST_URL
+    if url is None:
+        return False
     headers = {"Content-Type": "application/json"}
     auth = (
         settings.CLOUDPAYMENTS_PUBLIC_ID,

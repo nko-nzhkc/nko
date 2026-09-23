@@ -1,5 +1,5 @@
 from enum import Enum, StrEnum
-from typing import ClassVar
+from typing import Self
 
 
 class FailedPaymentStatuses(Enum):
@@ -25,11 +25,16 @@ class SubscriptionStatuses(Enum):
     INACTIVE = ("Подписка отсутствует", "Inactive", "7")
     LOST = ("Подписка утрачена", "Lost", "9")
 
-    verbosed: ClassVar[str]
-    capitalized: ClassVar[str]
-    group_id: ClassVar[str]
+    verbosed: str
+    capitalized: str
+    group_id: str
 
-    def __new__(cls, verbosed, capitalized, group_id):
+    def __new__(
+        cls,
+        verbosed: str,
+        capitalized: str,
+        group_id: str,
+    ) -> Self:
         """
         Переопределение создания энум-констант.
 

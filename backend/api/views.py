@@ -1,13 +1,16 @@
 # Модуль представлений проекта.
+from typing import Any
+
 from cloudpayments.models import CloudPayment
 from contacts.models import Contact
-from django.http import JsonResponse
+from django.http import HttpRequest, JsonResponse
 from django.views import View
 from donor_base.constants import HTTPMethod
 from forbiddenwords.models import ForbiddenWord
 from mixplat.models import MixPlat
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from api.cloudpayments_service import handling_cloudpayment_data
@@ -22,7 +25,7 @@ from api.serializers import (
 from api.unisender_service import add_contacts, send_request
 
 
-class ContactViewSet(viewsets.ModelViewSet):
+class ContactViewSet(viewsets.ModelViewSet[Contact]):
     """Вьюсет контактов."""
 
     queryset = Contact.objects.all()
@@ -33,10 +36,11 @@ class ContactViewSet(viewsets.ModelViewSet):
         url_path="start",
         methods=(HTTPMethod.POST.value,),
     )
-    def start(self, request):
+    def start(self, request: Request) -> Response:
         """Запуск процесса получения контактов из Unisender."""
+        data: Any = request.data
         return Response(
-            send_request(request.data["list_id"]),
+            send_request(data["list_id"]),
             status=status.HTTP_200_OK,
         )
 
@@ -45,21 +49,22 @@ class ContactViewSet(viewsets.ModelViewSet):
         url_path="get_contacts",
         methods=(HTTPMethod.GET.value, HTTPMethod.POST.value),
     )
-    def get_contacts(self, request):
+    def get_contacts(self, request: Request) -> Response:
         """Метод получения контактов от Unisender."""
-        if request.method == "get":
+        if request.method == "GET":
             return Response(status=status.HTTP_200_OK)
+        data: Any = request.data
         return Response(
             {
                 "result": add_contacts(
-                    request.data["result"]["file_to_download"],
+                    data["result"]["file_to_download"],
                 ),
             },
             status=status.HTTP_200_OK,
         )
 
 
-class ForbiddenwordViewSet(ViewListCreateMixinsSet):
+class ForbiddenwordViewSet(ViewListCreateMixinsSet[Any]):
     """Вьюсет запрещенных слов."""
 
     queryset = ForbiddenWord.objects.all()
@@ -67,7 +72,7 @@ class ForbiddenwordViewSet(ViewListCreateMixinsSet):
     pagination_class = None
 
 
-class MixplatViewSet(viewsets.ModelViewSet):
+class MixplatViewSet(viewsets.ModelViewSet[Any]):
     """Вьюсет Mixplat."""
 
     queryset = MixPlat.objects.all()
@@ -78,12 +83,12 @@ class MixplatViewSet(viewsets.ModelViewSet):
         url_path="payment_status",
         methods=(HTTPMethod.POST.value,),
     )
-    def payment_status(self, request):
+    def payment_status(self, request: Request) -> Response:
         """Метод получения данных от Mixplat."""
         return mixplat_request_handler(request)
 
 
-class CloudPaymentsViewSet(viewsets.GenericViewSet):
+class CloudPaymentsViewSet(viewsets.GenericViewSet[Any]):
     """Вьюсет для Cloudpayment."""
 
     @action(
@@ -91,7 +96,7 @@ class CloudPaymentsViewSet(viewsets.GenericViewSet):
         url_path="create_cloudpayment",
         methods=(HTTPMethod.POST.value,),
     )
-    def create_cloudpayment(self, request):
+    def create_cloudpayment(self, request: Request) -> Response:
         """Создание экземпляра Cloudpayment."""
         serializer = CloudpaymentsSerializer(
             data=handling_cloudpayment_data(request),
@@ -107,7 +112,12 @@ class PaymentsListView(View):
 
     model = None
 
-    def get(self, request, *args, **kwargs):
+    def get(
+        self,
+        request: HttpRequest,
+        *args: Any,
+        **kwargs: Any,
+    ) -> JsonResponse:
         """Обрабатывает GET-запрос для получения списка всех платежей."""
         mixplat_payments = MixPlat.objects.all()
         cloudpayment_payments = CloudPayment.objects.all()

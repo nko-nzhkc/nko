@@ -7,7 +7,7 @@ import sys
 from donor_base.di import container
 
 
-def main():
+def main() -> None:
     """Run administrative tasks."""
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "donor_base.settings")
     try:

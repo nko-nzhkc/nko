@@ -1,14 +1,44 @@
 """Сценарии API."""
-
+from collections.abc import Iterable, Iterator
 from itertools import islice
+from typing import Any, Protocol, TypeVar
 
 from donor_base.subscriptions import get_group_by_capitalized
+
+T = TypeVar("T")
+
+
+class DonorRepository(Protocol):
+    """Протокол репозитория доноров."""
+    def get_donors(
+        self,
+        donor_ids: Iterable[int] | None = ...,
+    ) -> Iterable[tuple[str, str]]:
+        """Возвращает итератор доноров в виде (email, subscription)."""
+        ...
+
+
+class UnisenderClient(Protocol):
+    """Протокол клиента Unisender."""
+    def send_contacts_to_unisender(
+        self,
+        *,
+        field_names: tuple[str, ...],
+        data: list[list[Any]],
+        overwrite_lists: int,
+    ) -> None:
+        """Отправляет контакты в Unisender."""
+        ...
+
 
 UNISENDER_BATCH_SIZE = 500
 UNISENDER_FIELD_NAMES = ("email", "email_list_ids")
 
 
-def _iter_batches(iterable, batch_size):
+def _iter_batches[T](
+    iterable: Iterable[T],
+    batch_size: int,
+) -> Iterator[list[T]]:
     """Возвращает непустые пачки элементов заданного размера."""
     iterator = iter(iterable)
 
@@ -22,7 +52,11 @@ def _iter_batches(iterable, batch_size):
 class SyncDonorsToUnisenderUseCase:
     """Синхронизирует всех доноров с Unisender."""
 
-    def __init__(self, repository, client):
+    def __init__(
+        self,
+        repository: DonorRepository,
+        client: UnisenderClient,
+    ) -> None:
         """Инициализирует use case репозиторием доноров и клиентом Unisender.
 
         Args:
@@ -34,7 +68,11 @@ class SyncDonorsToUnisenderUseCase:
         self.repository = repository
         self.client = client
 
-    def execute(self, donor_ids=None, overwrite_lists=1):
+    def execute(
+        self,
+        donor_ids: Iterable[int] | None = None,
+        overwrite_lists: int = 1,
+    ) -> None:
         """Отправляет всех доноров пачками, допустимыми Unisender."""
         if overwrite_lists not in {0, 1}:
             raise ValueError("overwrite_lists должен быть равен 0 или 1")

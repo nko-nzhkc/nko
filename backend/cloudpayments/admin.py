@@ -6,7 +6,7 @@ from cloudpayments.models import CloudPayment
 
 
 @admin.register(CloudPayment)
-class CloudPaymentAdmin(admin.ModelAdmin):
+class CloudPaymentAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     """Админ зона пожертвований Cloudpayment."""
 
     list_display = (

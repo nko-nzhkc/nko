@@ -1,9 +1,18 @@
 import os
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
+def _required_env(name: str) -> str:
+    required_value = os.getenv(name)
+    if not required_value:
+        raise RuntimeError(f"Missing required env: {name}")
+    return required_value
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -150,13 +159,13 @@ _TASK_TIME_LIMIT_HOURS = 30
 
 CELERY_TASK_TIME_LIMIT = _TASK_TIME_LIMIT_HOURS * _MINUTES_PER_HOUR
 
-CELERY_BEAT_SCHEDULE = {}
+CELERY_BEAT_SCHEDULE: dict[Any, Any] = {}
 
 # Константы проекта
 
 
 CLOUDPAYMENTS_PUBLIC_ID = os.getenv("CLOUDPAYMENTS_PUBLIC_ID")
-CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL = os.getenv(
+CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL: str = _required_env(
     "CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL",
 )
 CLOUDPAYMENTS_API_SECRET = os.getenv("CLOUDPAYMENTS_API_SECRET")
@@ -171,7 +180,7 @@ DEFAULT_CONF = {
 }
 
 EXPORT_UNISENDER = "https://api.unisender.com/ru/api/async/exportContacts"
-UNISENDER_API_KEY = os.getenv("UNISENDER_API_KEY")
+UNISENDER_API_KEY: str = _required_env("UNISENDER_API_KEY")
 NOTIFY_URL = "https://foodgrampyengineer.ru/api/contacts/get_contacts/"
 URL_SEND_EMAIL = "https://api.unisender.com/ru/api/sendEmail"
 URL_GET_TEMP = "https://api.unisender.com/ru/api/getTemplate"

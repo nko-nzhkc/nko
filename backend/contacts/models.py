@@ -1,4 +1,6 @@
 # Модуль модели контактов.
+from typing import override
+
 from api.validators import forbidden_words_validator
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -42,7 +44,8 @@ class Contact(AbstractUser):
             ),
         )
 
-    def __str__(self):
+    @override
+    def __str__(self) -> str:
         """Возвращает строковое представление контакта."""
         return f"{self.username} - {self.email}"
 
@@ -71,6 +74,7 @@ class Donor(models.Model):
         verbose_name = "Донор"
         verbose_name_plural = "Доноры"
 
-    def __str__(self):
+    @override
+    def __str__(self) -> str:
         """Строковое представление для модели Donor."""
         return self.email

@@ -224,6 +224,7 @@ per-file-ignores = [
     "tests/*: WPS202",
     "backend/donor_base/__init__.py:WPS410",
     "backend/manage.py: WPS453",
+    "backend/api/use_cases.py: WPS111",
 ]
 
 extend-exclude = [

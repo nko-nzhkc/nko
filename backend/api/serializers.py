@@ -6,7 +6,7 @@ from mixplat.models import MixPlat
 from rest_framework import serializers
 
 
-class MixPlatSerializer(serializers.ModelSerializer):
+class MixPlatSerializer(serializers.ModelSerializer[MixPlat]):
     """Сериализатор платежа Mixplat."""
 
     class Meta:
@@ -27,7 +27,7 @@ class MixPlatSerializer(serializers.ModelSerializer):
         )
 
 
-class ContactSerializer(serializers.ModelSerializer):
+class ContactSerializer(serializers.ModelSerializer[Contact]):
     """Сериализатор контактов."""
 
     class Meta:
@@ -35,7 +35,7 @@ class ContactSerializer(serializers.ModelSerializer):
         fields = ("username", "email", "subject", "comment")
 
 
-class ForbiddenwordSerializer(serializers.ModelSerializer):
+class ForbiddenwordSerializer(serializers.ModelSerializer[ForbiddenWord]):
     """Сериализатор запрещенных слов."""
 
     class Meta:
@@ -43,7 +43,7 @@ class ForbiddenwordSerializer(serializers.ModelSerializer):
         fields = ("forbidden_word",)
 
 
-class CloudpaymentsSerializer(serializers.ModelSerializer):
+class CloudpaymentsSerializer(serializers.ModelSerializer[CloudPayment]):
     """Сериализатор для модели CloudPayment."""
 
     class Meta:

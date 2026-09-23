@@ -5,18 +5,20 @@ import logging
 import pathlib
 import shutil
 from http import HTTPMethod, HTTPStatus
+from typing import Any
 
 from contacts.models import Donor
 from django.conf import settings
 from donor_base import http_client
 from donor_base.subscriptions import get_capitalized_by_group_id
 
-from api.donor_service import donor_exists
-
 logger = logging.getLogger(__name__)
 
 
-def _extract_unisender_result(response_data, error_label="Ошибка:"):
+def _extract_unisender_result(
+    response_data: dict[str, Any],
+    error_label: str = "Ошибка:",
+) -> Any | None:
     """Извлекает result из ответа Unisender."""
     if "error" in response_data:
         logger.info(error_label)
@@ -30,21 +32,21 @@ def _extract_unisender_result(response_data, error_label="Ошибка:"):
     return None
 
 
-def send_payment_email(email, list_id):
+def send_payment_email(email: str, list_id: int | str) -> None:
     """Получение шаблона и отправка письма донору."""
-    data = {
+    template_data = {
         "format": "json",
         "api_key": settings.UNISENDER_API_KEY,
         "template_id": settings.TEMPLATE_ID,
     }
-    response = http_client.post_form(settings.URL_GET_TEMP, data)
+    response = http_client.post_form(settings.URL_GET_TEMP, template_data)
     template = _extract_unisender_result(
         response.json,
         "Ошибка при запросе шаблона:",
     )
     if template is None:
         return
-    data = {
+    data: dict[str, Any] = {
         "format": "json",
         "api_key": settings.UNISENDER_API_KEY,
         "email": email,
@@ -64,7 +66,7 @@ def send_payment_email(email, list_id):
         logger.info("Email ID: %s", unisender_result["email_id"])
 
 
-def send_request(list_id):
+def send_request(list_id: int | str) -> dict[str, Any] | None:
     """Отправка запроса на получение контактов доноров от Unisender."""
     data = {
         "api_key": settings.UNISENDER_API_KEY,
@@ -74,7 +76,7 @@ def send_request(list_id):
         "list_id": list_id,
     }
     response = http_client.post_form(settings.EXPORT_UNISENDER, data)
-    response_data = response.json
+    response_data: dict[str, Any] = response.json
     unisender_result = _extract_unisender_result(response_data)
     if unisender_result is None:
         return None
@@ -96,7 +98,7 @@ def _save_file_from_url(file_url: str, file_path: pathlib.Path) -> str | None:
     return None
 
 
-def _build_bulk_list(file_path: pathlib.Path) -> list:
+def _build_bulk_list(file_path: pathlib.Path) -> list[Donor]:
     """Формирует список новых доноров из CSV-файла."""
     with file_path.open(encoding="utf-8") as csv_file:
         return [
@@ -105,11 +107,14 @@ def _build_bulk_list(file_path: pathlib.Path) -> list:
                 subscription=get_capitalized_by_group_id(row[1]),
             )
             for row in csv.reader(csv_file, delimiter=",")
-            if row[0] != "email" and not donor_exists(row[0])
+            if (
+                row[0] != "email"
+                and not Donor.objects.filter(email=row[0]).exists()
+            )
         ]
 
 
-def add_contacts(file_url):
+def add_contacts(file_url: str) -> str | None:
     """Добавление доноров в БД из файла, получаемого по ссылке."""
     file_path = pathlib.Path("files") / "data.csv"
 

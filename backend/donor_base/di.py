@@ -4,8 +4,8 @@ from collections.abc import Generator
 
 import dishka
 import zapros
-from django.conf import settings
 
+from donor_base.settings import UNISENDER_API_KEY
 from donor_base.unisender_client import Client as UnisenderClient
 
 
@@ -25,7 +25,7 @@ class AppProvider(dishka.Provider):
     def unisender_client(self) -> UnisenderClient:
         """Создаёт общий клиент Unisender."""
         return UnisenderClient(
-            api_key=settings.UNISENDER_API_KEY,
+            api_key=UNISENDER_API_KEY,
             platform="donor_base",
             lang="ru",
         )

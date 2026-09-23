@@ -2,6 +2,7 @@
 
 import logging
 from functools import partial
+from typing import TypedDict
 
 from celery import chain
 from contacts.models import Donor
@@ -23,18 +24,19 @@ from api.tasks import (
 logger = logging.getLogger(__name__)
 
 
-def donor_exists(email):
-    """Метод проверки наличия контакта донора в ДБ."""
-    return Donor.objects.filter(email=email).exists()
+class DonorPayload(TypedDict):
+    """Минимальные данные донора, используемые сервисом."""
+    email: str
+    status: str
 
 
 def ad_donor(
-    donor_email,
-    subscription,
-    update,
+    donor_email: str,
+    subscription: str,
+    update: bool,  # ruff: ignore[boolean-type-hint-positional-argument]
     *,
-    send_email=False,
-):
+    send_email: bool = False,
+) -> None:
     """Сохраняет донора и планирует импорт, затем при необходимости письмо."""
     donor_obj, _ = Donor.objects.update_or_create(
         email=donor_email,
@@ -63,7 +65,7 @@ def ad_donor(
     )
 
 
-def _handle_failed_payment(donor_email, donor):
+def _handle_failed_payment(donor_email: str, donor: Donor) -> None:
     """Обрабатывает случай неуспешного платежа для существующего донора."""
     if donor.subscription == SubscriptionStatuses.ACTIVE.capitalized:
         # если у донора 3й отклонённый платёж
@@ -84,7 +86,7 @@ def _handle_failed_payment(donor_email, donor):
             )
 
 
-def _handle_active_subscription(donor_email, donor):
+def _handle_active_subscription(donor_email: str, donor: Donor) -> None:
     """Обрабатывает случай успешного платежа с активной подпиской."""
     # если старый статус "Lost", "Inactive"
     if donor.subscription in NEGATIVE_SUB_STAT:
@@ -105,7 +107,7 @@ def _handle_active_subscription(donor_email, donor):
         )
 
 
-def _create_new_donor(donor_email, subscription):
+def _create_new_donor(donor_email: str, subscription: str) -> None:
     """Создает нового донора в зависимости от статуса подписки."""
     if subscription == SubscriptionStatuses.INACTIVE.capitalized:
         ad_donor(
@@ -132,7 +134,11 @@ def _create_new_donor(donor_email, subscription):
         )
 
 
-def _update_existing_donor(donor_email, payment_status, subscription):
+def _update_existing_donor(
+    donor_email: str,
+    payment_status: str,
+    subscription: str,
+) -> None:
     """Обновляет статус существующего донора в зависимости от платежа."""
     donor = Donor.objects.get(email=donor_email)
     if payment_status in FailedPaymentStatuses:
@@ -145,11 +151,11 @@ def _update_existing_donor(donor_email, payment_status, subscription):
         )
 
 
-def create_or_update_donor(data, subscription):
+def create_or_update_donor(data: DonorPayload, subscription: str) -> None:
     """Создаем нового донора или обновляем статус существующего."""
     donor_email = data["email"]
     payment_status = data["status"]
-    if donor_exists(donor_email):
+    if Donor.objects.filter(email=donor_email).exists():
         _update_existing_donor(donor_email, payment_status, subscription)
     else:
         _create_new_donor(donor_email, subscription)

@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from forbiddenwords.models import ForbiddenWord
 
 
-def forbidden_words_validator(word_input):
+def forbidden_words_validator(word_input: str) -> None:
     """Валидация на запрещенные слова."""
     forbidden_words = ForbiddenWord.objects.values_list(
         "forbidden_word",
