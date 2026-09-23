@@ -50,7 +50,7 @@ build-backend = "poetry.core.masonry.api"
 DJANGO_SETTINGS_MODULE = "donor_base.settings"
 django_find_project = false
 testpaths = ["tests"]
-pythonpath = ["backend"]
+pythonpath = ["backend", "."]
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 
 [tool.mypy]
