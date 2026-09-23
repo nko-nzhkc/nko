@@ -1,28 +1,46 @@
 # Модуль API URLS проекта.
-from django.urls import include, path
-from rest_framework import routers
+from django.urls import path
 
 from .views import (
-    ContactViewSet,
-    ForbiddenwordViewSet,
-    CloudPaymentsViewSet,
-    MixplatViewSet,
+    StartContactSendView,
+    GetContactsView,
+    ForbiddenWordListView,
+    MixplatView,
+    CloudPaymentCreateView,
     PaymentsListView,
 )
 
 app_name = "api"
 
-router_v1 = routers.DefaultRouter()
-router_v1.register("contacts", ContactViewSet, basename="contacts")
-router_v1.register(
-    "forbiddenwords", ForbiddenwordViewSet, basename="forbiddenwords"
-)
-router_v1.register(
-    "cloudpayments", CloudPaymentsViewSet, basename="cloudpayments"
-)
-router_v1.register("mixplat", MixplatViewSet, basename="mixplat")
-
 urlpatterns = [
-    path("", include(router_v1.urls)),
-    path("payments/", PaymentsListView.as_view(), name="payments_list"),
+    path(
+        'contacts/start/',
+        StartContactSendView.as_view(),
+        name='start-contact-send',
+    ),
+    path(
+        'contacts/get_contacts/',
+        GetContactsView.as_view(),
+        name='get-contacts',
+    ),
+    path(
+        'forbiddenwords/',
+        ForbiddenWordListView.as_view(),
+        name='forbiddenwords',
+    ),
+    path(
+        'mixplat/',
+        MixplatView.as_view(),
+        name='mixplat',
+    ),
+    path(
+        'cloudpayments/',
+        CloudPaymentCreateView.as_view(),
+        name='cloudpayments',
+    ),
+    path(
+        'payments/',
+        PaymentsListView.as_view(),
+        name='payments-list',
+    ),
 ]

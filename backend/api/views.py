@@ -1,17 +1,13 @@
 # Модуль представлений проекта.
-from django.http import JsonResponse
-from django.views import View
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework import status
+from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .mixins import ViewListCreateMixinsSet
 from .permissions import IsAdmin
 from .serializers import (
-    ContactSerializer,
     ForbiddenwordSerializer,
     CloudpaymentsSerializer,
-    MixPlatSerializer,
 )
 from .utils import (
     add_contacts,
@@ -19,38 +15,28 @@ from .utils import (
     mixplat_request_handler,
     send_request,
 )
-from contacts.models import Contact
 from forbiddenwords.models import ForbiddenWord
 from mixplat.models import MixPlat
 from cloudpayments.models import CloudPayment
 
 
-class ContactViewSet(viewsets.ModelViewSet):
-    """Вьюсет контактов."""
+class StartContactSendView(APIView):
+    """Запуск процесса получения контактов из Unisender."""
 
-    queryset = Contact.objects.all()
-    serializer_class = ContactSerializer
-
-    @action(detail=False, url_path="start", methods=("post",))
-    def start(self, request):
-        """Запуск процесса получения контактов из Unisender."""
+    def post(self, request):
         return Response(
             send_request(request.data["list_id"]),
             status=status.HTTP_200_OK,
         )
 
-    @action(
-        detail=False,
-        url_path="get_contacts",
-        methods=(
-            "get",
-            "post",
-        ),
-    )
-    def get_contacts(self, request):
-        """Метод получения контактов от Unisender."""
-        if request.method == "GET":
-            return Response(status=status.HTTP_200_OK)
+
+class GetContactsView(APIView):
+    """Получение контактов от Unisender."""
+
+    def get(self, request):
+        return Response(status=status.HTTP_200_OK)
+
+    def post(self, request):
         return Response(
             dict(
                 result=add_contacts(request.data["result"]["file_to_download"])
@@ -59,8 +45,8 @@ class ContactViewSet(viewsets.ModelViewSet):
         )
 
 
-class ForbiddenwordViewSet(ViewListCreateMixinsSet):
-    """Вьюсет запрещенных слов."""
+class ForbiddenWordListView(ListCreateAPIView):
+    """Список запрещённых слов и создание нового."""
 
     queryset = ForbiddenWord.objects.all()
     serializer_class = ForbiddenwordSerializer
@@ -68,28 +54,19 @@ class ForbiddenwordViewSet(ViewListCreateMixinsSet):
     pagination_class = None
 
 
-class MixplatViewSet(viewsets.ModelViewSet):
-    """Вьюсет Mixplat."""
+class MixplatView(APIView):
+    """Получение данных от Mixplat."""
 
-    queryset = MixPlat.objects.all()
-    serializer_class = MixPlatSerializer
-
-    @action(detail=False, url_path="payment_status", methods=("post",))
-    def payment_status(self, request):
-        """Метод получения данных от Mixplat."""
+    def post(self, request):
         return mixplat_request_handler(request)
 
 
-class CloudPaymentsViewSet(viewsets.GenericViewSet):
+class CloudPaymentCreateView(APIView):
     """
-    Вьюсет для Cloudpayment.
+    Создание экземпляра Cloudpayment.
     """
 
-    @action(detail=False, url_path="create_cloudpayment", methods=["post"])
-    def create_cloudpayment(self, request):
-        """
-        Создание экземпляра Cloudpayment.
-        """
+    def post(self, request):
         serializer = CloudpaymentsSerializer(
             data=handling_cloudpayment_data(request)
         )
@@ -99,8 +76,12 @@ class CloudPaymentsViewSet(viewsets.GenericViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class PaymentsListView(View):
-    model = None
+class PaymentsListView(APIView):
+    """
+    API-представление для получения объединённого списка платежей.
+    """
+
+    permission_classes = [IsAdmin]
 
     def get(self, request, *args, **kwargs):
         mixplat_payments = MixPlat.objects.all()
@@ -111,4 +92,7 @@ class PaymentsListView(View):
 
         payments_data = list(all_payments_list.values())
 
-        return JsonResponse({"payments_list": payments_data})
+        return Response(
+            {"payments_list": payments_data},
+            status=status.HTTP_200_OK,
+        )
