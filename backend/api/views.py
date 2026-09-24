@@ -1,9 +1,9 @@
 # Модуль представлений проекта.
-from rest_framework import status
-from rest_framework.generics import ListCreateAPIView
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
+from .mixins import ViewListCreateMixinsSet
 from .permissions import IsAdmin
 from .serializers import (
     ForbiddenwordSerializer,
@@ -20,23 +20,29 @@ from mixplat.models import MixPlat
 from cloudpayments.models import CloudPayment
 
 
-class StartContactSendView(APIView):
-    """Запуск процесса получения контактов из Unisender."""
+class ContactViewSet(viewsets.GenericViewSet):
+    """Вьюсет контактов."""
 
-    def post(self, request):
+    @action(detail=False, url_path="start", methods=("post",))
+    def start(self, request):
+        """Запуск процесса получения контактов из Unisender."""
         return Response(
             send_request(request.data["list_id"]),
             status=status.HTTP_200_OK,
         )
 
-
-class GetContactsView(APIView):
-    """Получение контактов от Unisender."""
-
-    def get(self, request):
-        return Response(status=status.HTTP_200_OK)
-
-    def post(self, request):
+    @action(
+        detail=False,
+        url_path="get_contacts",
+        methods=(
+            "get",
+            "post",
+        ),
+    )
+    def get_contacts(self, request):
+        """Метод получения контактов от Unisender."""
+        if request.method == "GET":
+            return Response(status=status.HTTP_200_OK)
         return Response(
             dict(
                 result=add_contacts(request.data["result"]["file_to_download"])
@@ -45,8 +51,8 @@ class GetContactsView(APIView):
         )
 
 
-class ForbiddenWordListView(ListCreateAPIView):
-    """Список запрещённых слов и создание нового."""
+class ForbiddenwordViewSet(ViewListCreateMixinsSet):
+    """Вьюсет запрещенных слов."""
 
     queryset = ForbiddenWord.objects.all()
     serializer_class = ForbiddenwordSerializer
@@ -54,19 +60,21 @@ class ForbiddenWordListView(ListCreateAPIView):
     pagination_class = None
 
 
-class MixplatView(APIView):
-    """Получение данных от Mixplat."""
+class MixplatViewSet(viewsets.GenericViewSet):
+    """Вьюсет Mixplat."""
 
-    def post(self, request):
+    @action(detail=False, url_path="payment_status", methods=("post",))
+    def payment_status(self, request):
+        """Метод получения данных от Mixplat."""
         return mixplat_request_handler(request)
 
 
-class CloudPaymentCreateView(APIView):
-    """
-    Создание экземпляра Cloudpayment.
-    """
+class CloudPaymentsViewSet(viewsets.GenericViewSet):
+    """Вьюсет для Cloudpayment."""
 
-    def post(self, request):
+    @action(detail=False, url_path="create_cloudpayment", methods=["post"])
+    def create_cloudpayment(self, request):
+        """Создание экземпляра Cloudpayment."""
         serializer = CloudpaymentsSerializer(
             data=handling_cloudpayment_data(request)
         )
@@ -76,23 +84,15 @@ class CloudPaymentCreateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class PaymentsListView(APIView):
-    """
-    API-представление для получения объединённого списка платежей.
-    """
+class PaymentsListViewSet(viewsets.GenericViewSet):
+    """Список всех платежей (Mixplat + CloudPayments)."""
 
     permission_classes = [IsAdmin]
 
-    def get(self, request, *args, **kwargs):
-        mixplat_payments = MixPlat.objects.all()
-        cloudpayment_payments = CloudPayment.objects.all()
-
-        all_payments_list = mixplat_payments.union(cloudpayment_payments)
-        all_payments_list = all_payments_list.order_by("-pub_date")
-
-        payments_data = list(all_payments_list.values())
-
-        return Response(
-            {"payments_list": payments_data},
-            status=status.HTTP_200_OK,
+    def list(self, request, *args, **kwargs):
+        payments = (
+            MixPlat.objects.all()
+            .union(CloudPayment.objects.all())
+            .order_by("-pub_date")
         )
+        return Response({"payments_list": list(payments.values())})
