@@ -87,8 +87,6 @@ class CloudPaymentsViewSet(viewsets.GenericViewSet):
 class PaymentsListViewSet(viewsets.GenericViewSet):
     """Список всех платежей (Mixplat + CloudPayments)."""
 
-    permission_classes = [IsAdmin]
-
     def list(self, request, *args, **kwargs):
         payments = (
             MixPlat.objects.all()
