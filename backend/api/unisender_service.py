@@ -46,7 +46,7 @@ def send_payment_email(email: str, list_id: int | str) -> None:
     )
     if template is None:
         return
-    data: dict[str, Any] = {
+    data = {
         "format": "json",
         "api_key": settings.UNISENDER_API_KEY,
         "email": email,

@@ -1,11 +1,11 @@
 # Модуль представлений проекта.
+from http import HTTPMethod
 from typing import Any
 
 from cloudpayments.models import CloudPayment
 from contacts.models import Contact
 from django.http import HttpRequest, JsonResponse
 from django.views import View
-from donor_base.constants import HTTPMethod
 from forbiddenwords.models import ForbiddenWord
 from mixplat.models import MixPlat
 from rest_framework import status, viewsets
@@ -25,6 +25,13 @@ from api.serializers import (
 from api.unisender_service import add_contacts, send_request
 
 
+def _form_error_response() -> Response:
+    return Response(
+        {"error": "Invalid payload"},
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+
+
 class ContactViewSet(viewsets.ModelViewSet[Contact]):
     """Вьюсет контактов."""
 
@@ -38,9 +45,14 @@ class ContactViewSet(viewsets.ModelViewSet[Contact]):
     )
     def start(self, request: Request) -> Response:
         """Запуск процесса получения контактов из Unisender."""
-        data: Any = request.data
+        data = request.data
+        if not isinstance(data, dict):
+            return _form_error_response()
+        list_id = data.get("list_id")
+        if not list_id:
+            return _form_error_response()
         return Response(
-            send_request(data["list_id"]),
+            send_request(list_id),
             status=status.HTTP_200_OK,
         )
 
@@ -53,18 +65,24 @@ class ContactViewSet(viewsets.ModelViewSet[Contact]):
         """Метод получения контактов от Unisender."""
         if request.method == "GET":
             return Response(status=status.HTTP_200_OK)
-        data: Any = request.data
+        data = request.data
+        if not isinstance(data, dict):
+            return _form_error_response()
+        file_result = data.get("result")
+        file_url = (
+            file_result.get("file_to_download")
+            if isinstance(file_result, dict)
+            else None
+        )
+        if not file_url:
+            return _form_error_response()
         return Response(
-            {
-                "result": add_contacts(
-                    data["result"]["file_to_download"],
-                ),
-            },
+            {"result": add_contacts(file_url)},
             status=status.HTTP_200_OK,
         )
 
 
-class ForbiddenwordViewSet(ViewListCreateMixinsSet[Any]):
+class ForbiddenwordViewSet(ViewListCreateMixinsSet[ForbiddenWord]):
     """Вьюсет запрещенных слов."""
 
     queryset = ForbiddenWord.objects.all()
@@ -88,7 +106,7 @@ class MixplatViewSet(viewsets.ModelViewSet[Any]):
         return mixplat_request_handler(request)
 
 
-class CloudPaymentsViewSet(viewsets.GenericViewSet[Any]):
+class CloudPaymentsViewSet(viewsets.GenericViewSet[CloudPayment]):
     """Вьюсет для Cloudpayment."""
 
     @action(

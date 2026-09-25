@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Any
 
 from dotenv import load_dotenv
 
@@ -152,10 +151,7 @@ _TASK_TIME_LIMIT_HOURS = 30
 
 CELERY_TASK_TIME_LIMIT = _TASK_TIME_LIMIT_HOURS * _MINUTES_PER_HOUR
 
-CELERY_BEAT_SCHEDULE: dict[Any, Any] = {}
-
 # Константы проекта
-
 
 CLOUDPAYMENTS_PUBLIC_ID = os.getenv("CLOUDPAYMENTS_PUBLIC_ID")
 CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL: str = os.getenv(

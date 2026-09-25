@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import TypedDict, cast
+from typing import Any, TypedDict, TypeGuard
 from zoneinfo import ZoneInfo
 
 from donor_base.constants import (
@@ -18,6 +18,11 @@ from rest_framework.response import Response
 from api.donor_service import create_or_update_donor
 
 logger = logging.getLogger(__name__)
+
+ERROR_RESPONSE = Response(
+    {"result": "error", "error_description": "Internal error"},
+    status=status.HTTP_400_BAD_REQUEST,
+)
 
 
 class MixplatRequestData(TypedDict):
@@ -59,6 +64,27 @@ def string_to_date(date_string: str) -> datetime:
     )
 
 
+def _is_mixplat_data(data: dict[Any, Any]) -> TypeGuard[MixplatRequestData]:
+    """TypeGuard для mypy - сужает dict[Any,Any] до MixplatRequestData."""
+    required_str_fields = (
+        "user_email",
+        "amount",
+        "amount_user",
+        "payment_method",
+        "payment_id",
+        "status",  # noqa: WPS226
+        "user_account_id",
+        "date_created",
+        "date_processed",
+        "currency",
+    )
+    for field in required_str_fields:
+        if not isinstance(data.get(field), str):
+            return False
+    recurrent_id = data.get("recurrent_id")
+    return not (recurrent_id is not None and not isinstance(recurrent_id, str))
+
+
 def _build_mixplat_payload(
     data: MixplatRequestData,
 ) -> tuple[MixPlatPayload, str]:
@@ -88,7 +114,11 @@ def _build_mixplat_payload(
 def _process_mixplat_request(data: MixplatRequestData) -> None:
     """Обрабатывает данные запроса Mixplat и сохраняет объекты."""
     mixplat_obj_dict, subscription = _build_mixplat_payload(data)
-    create_or_update_donor(mixplat_obj_dict, subscription)
+    create_or_update_donor(
+        donor_email=mixplat_obj_dict["email"],
+        payment_status=mixplat_obj_dict["status"],
+        subscription=subscription,
+    )
     MixPlat.objects.create(**mixplat_obj_dict)
 
 
@@ -96,15 +126,11 @@ def mixplat_request_handler(request: Request) -> Response:
     """Метод создания объектов из данных от Mixplat."""
     data = request.data
     if not isinstance(data, dict):
-        return Response(
-            {"result": "error", "error_description": "Internal error"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        return ERROR_RESPONSE
+    if not _is_mixplat_data(data):
+        return ERROR_RESPONSE
     try:
-        _process_mixplat_request(cast(MixplatRequestData, data))
+        _process_mixplat_request(data)
     except KeyError:
-        return Response(
-            {"result": "error", "error_description": "Internal error"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        return ERROR_RESPONSE
     return Response({"result": "ok"}, status=status.HTTP_200_OK)

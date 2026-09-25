@@ -3,7 +3,7 @@
 import base64
 import logging
 from http import HTTPMethod, HTTPStatus
-from typing import Any, cast
+from typing import Any
 
 import zapros
 from django.conf import settings
@@ -11,7 +11,7 @@ from donor_base import http_client
 from donor_base.constants import SubscriptionStatuses
 from rest_framework.request import Request
 
-from api.donor_service import DonorPayload, create_or_update_donor
+from api.donor_service import create_or_update_donor
 
 logger = logging.getLogger(__name__)
 
@@ -48,19 +48,23 @@ def handling_cloudpayment_data(request: Request) -> dict[str, Any]:
     if isinstance(request.data, dict) and "Model" in request.data:
         model = request.data["Model"][0]
         data: dict[str, Any] = {
-            "email": model.get("Email"),
+            "email": str(model.get("Email")),
             "donat": model.get("Amount"),
             "date_created": model.get("CreatedDateIso"),
             "date_processed": model.get("ConfirmDateIso"),
             "payment_id": model.get("TransactionId"),
-            "status": model.get("Status"),
+            "status": str(model.get("Status")),
             "payment_operator": "Cloudpayment",
             "payment_method": model.get("CardType"),
             "user_account_id": model.get("TransactionId"),
             "currency": model.get("Currency"),
         }
         subscription = check_donor_subscriptions(data["email"])
-        create_or_update_donor(cast(DonorPayload, data), subscription)
+        create_or_update_donor(
+            donor_email=data["email"],
+            payment_status=data["status"],
+            subscription=subscription,
+        )
         return data
     logger.info("Неправильная структура request.data")
     raise ValueError("Неправильная структура request.data")

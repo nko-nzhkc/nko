@@ -2,7 +2,6 @@
 
 import logging
 from functools import partial
-from typing import TypedDict
 
 from celery import chain
 from contacts.models import Donor
@@ -22,13 +21,6 @@ from api.tasks import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-class DonorPayload(TypedDict):
-    """Минимальные данные донора, используемые сервисом."""
-
-    email: str
-    status: str
 
 
 def ad_donor(
@@ -152,10 +144,12 @@ def _update_existing_donor(
         )
 
 
-def create_or_update_donor(data: DonorPayload, subscription: str) -> None:
+def create_or_update_donor(
+    donor_email: str,
+    payment_status: str,
+    subscription: str,
+) -> None:
     """Создаем нового донора или обновляем статус существующего."""
-    donor_email = data["email"]
-    payment_status = data["status"]
     if Donor.objects.filter(email=donor_email).exists():
         _update_existing_donor(donor_email, payment_status, subscription)
     else:
