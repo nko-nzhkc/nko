@@ -4,10 +4,11 @@ import pytest
 from api.repositories import DonorRepository
 from contacts.models import Donor
 from donor_base.constants import SubscriptionStatuses
+from faker.proxy import Faker
 
 
 @pytest.fixture
-def donors(db, faker):
+def donors(db: object, faker: Faker) -> list[Donor]:
     """Создаёт доноров с разными статусами подписки."""
     return [
         Donor.objects.create(
@@ -25,7 +26,10 @@ def donors(db, faker):
     "selection",
     ["all", "selected", "empty", "missing"],
 )
-def test_get_donors_returns_use_case_data(donors, selection):
+def test_get_donors_returns_use_case_data(
+    donors: list[Donor],
+    selection: str,
+) -> None:
     """Репозиторий возвращает данные, нужные use case."""
     if selection == "all":
         donor_ids = None

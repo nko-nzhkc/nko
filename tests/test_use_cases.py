@@ -1,7 +1,9 @@
 """Тесты сценариев API."""
 
+from collections.abc import Callable, Iterable, Iterator
 from functools import partial
-from unittest.mock import patch
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 from api.repositories import DonorRepository
@@ -14,6 +16,7 @@ from contacts.models import Donor
 from donor_base import di
 from donor_base.constants import SubscriptionStatuses
 from donor_base.subscriptions import get_group_by_capitalized
+from faker import Faker
 
 IMPORT_CONTACTS_METHOD = "import_contacts"
 FIELD_NAMES_KEY = "field_names"
@@ -21,7 +24,7 @@ DATA_KEY = "data"
 OVERWRITE_LISTS_KEY = "overwrite_lists"
 
 
-def _create_donors(faker, count):
+def _create_donors(faker: Faker, count: int) -> list[Donor]:
     """Создаёт count реальных доноров с активной подпиской."""
     subscription = SubscriptionStatuses.ACTIVE.capitalized
     return Donor.objects.bulk_create([
@@ -31,13 +34,13 @@ def _create_donors(faker, count):
 
 
 @pytest.fixture
-def donor_factory(db, faker):
+def donor_factory(db: object, faker: Faker) -> Callable[[int], list[Donor]]:
     """Создаёт реальные записи доноров для сценария."""
     return partial(_create_donors, faker)
 
 
 @pytest.fixture
-def api_request():
+def api_request() -> Iterator[MagicMock]:
     """Изолирует отправку запроса во внешний Unisender."""
     with patch(
         "donor_base.unisender_client.Client._api_request",
@@ -46,7 +49,7 @@ def api_request():
 
 
 @pytest.fixture
-def use_case(api_request):
+def use_case(api_request: MagicMock) -> SyncDonorsToUnisenderUseCase:
     """Создаёт сценарий с реальными production-зависимостями."""
     return SyncDonorsToUnisenderUseCase(
         repository=DonorRepository(),
@@ -54,33 +57,33 @@ def use_case(api_request):
     )
 
 
-def _donor_row(donor):
+def _donor_row(donor: Donor) -> list[str]:
     """Преобразует донора в строку payload для Unisender."""
     return [donor.email, get_group_by_capitalized(donor.subscription)]
 
 
-def _assert_common_payload_shape(payload):
+def _assert_common_payload_shape(payload: dict[str, Any]) -> None:
     """Проверяет общие для всех пачек поля payload."""
     assert payload[FIELD_NAMES_KEY] == UNISENDER_FIELD_NAMES
 
 
-def _assert_batch_payload(payload):
+def _assert_batch_payload(payload: dict[str, Any]) -> None:
     """Проверяет форму и режим перезаписи для одной пачки."""
     _assert_common_payload_shape(payload)
     assert payload[OVERWRITE_LISTS_KEY] == 1
 
 
-def _assert_batches_payloads(payloads):
+def _assert_batches_payloads(payloads: Iterable[dict[str, Any]]) -> None:
     """Проверяет форму и режим перезаписи для всех пачек."""
     for payload in payloads:
         _assert_batch_payload(payload)
 
 
 def test_execute_sends_batch_for_full_size(
-    donor_factory,
-    use_case,
-    api_request,
-):
+    donor_factory: Callable[[int], list[Donor]],
+    use_case: SyncDonorsToUnisenderUseCase,
+    api_request: MagicMock,
+) -> None:
     """Полная пачка доноров отправляется одним вызовом importContacts."""
     donors = donor_factory(UNISENDER_BATCH_SIZE)
 
@@ -97,10 +100,10 @@ def test_execute_sends_batch_for_full_size(
 
 
 def test_execute_splits_overflow_into_two_batches(
-    donor_factory,
-    use_case,
-    api_request,
-):
+    donor_factory: Callable[[int], list[Donor]],
+    use_case: SyncDonorsToUnisenderUseCase,
+    api_request: MagicMock,
+) -> None:
     """Пачка сверх лимита разделяется на полную и остаточную части."""
     donors = donor_factory(UNISENDER_BATCH_SIZE + 1)
 
@@ -129,11 +132,11 @@ def test_execute_splits_overflow_into_two_batches(
 
 @pytest.mark.parametrize("overwrite_lists", [0, 1])
 def test_execute_passes_filter_and_overwrite_mode(
-    overwrite_lists,
-    donor_factory,
-    use_case,
-    api_request,
-):
+    overwrite_lists: int,
+    donor_factory: Callable[[int], list[Donor]],
+    use_case: SyncDonorsToUnisenderUseCase,
+    api_request: MagicMock,
+) -> None:
     """Сценарий передаёт фильтр и сохраняет режим обновления."""
     donors = donor_factory(2)
     selected = donors[0]
@@ -154,10 +157,10 @@ def test_execute_passes_filter_and_overwrite_mode(
 
 
 def test_execute_does_not_send_empty_selection(
-    donor_factory,
-    use_case,
-    api_request,
-):
+    donor_factory: Callable[[int], list[Donor]],
+    use_case: SyncDonorsToUnisenderUseCase,
+    api_request: MagicMock,
+) -> None:
     """Пустая выборка не приводит к отправке контактов."""
     donor_factory(1)
 

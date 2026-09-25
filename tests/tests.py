@@ -1,7 +1,9 @@
 """Модуль тестов API."""
 
+from collections.abc import Generator
 from http import HTTPMethod, HTTPStatus
-from unittest.mock import patch
+from typing import TYPE_CHECKING, Any, override
+from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlsplit
 
 import dishka
@@ -29,15 +31,20 @@ FORMAT_FIELD = "format"
 API_KEY_FIELD = "api_key"
 RESULT_FIELD = "result"
 
+if TYPE_CHECKING:
+    _MixinBase = SimpleTestCase
+else:
+    _MixinBase = object
+
 
 def expected_import_request_fields(
-    email,
-    list_id,
-    api_key,
-    overwrite_lists,
-    format_,
-    platform=None,
-):
+    email: str,
+    list_id: int,
+    api_key: str,
+    overwrite_lists: int,
+    format_: str,
+    platform: str | None = None,
+) -> dict[str, Any]:
     """Возвращает ожидаемые поля запроса importContacts."""
     contact_values = [email, list_id]
 
@@ -66,10 +73,17 @@ def expected_import_request_fields(
     return fields
 
 
-class UnisenderFixtureMixin:
+class UnisenderFixtureMixin(_MixinBase):
     """Фикстуры Unisender-тестов: Faker, mock-роутер, DI-контейнер."""
 
-    def setUp(self):
+    fake: Faker
+    email: str
+    list_id: int
+    api_key: str
+    router: MockRouter
+
+    @override
+    def setUp(self) -> None:
         """Настраивает общие зависимости тестов Unisender."""
         super().setUp()
 
@@ -87,14 +101,21 @@ class UnisenderFixtureMixin:
         self.addCleanup(patcher.stop)
         self.addCleanup(container.close)
 
-    def _override_settings(self, **kwargs):
+    def _override_settings(self, **kwargs: Any) -> None:
         overridden = self.settings(**kwargs)
         overridden.enable()
         self.addCleanup(overridden.disable)
 
-    def _mock_request(self, method, url, response_data, status=HTTPStatus.OK):
+    def _mock_request(
+        self,
+        method: HTTPMethod,
+        url: str,
+        response_data: dict[str, Any],
+        status: HTTPStatus = HTTPStatus.OK,
+    ) -> Mock:
         """Регистрирует в роутере ответ на запрос method по url."""
         parsed = urlsplit(url)
+        assert parsed.hostname is not None
         matcher = path(parsed.path).method(method).host(parsed.hostname)
         mock = Mock.given(matcher).respond(
             zapros.Response(status=status, json=response_data),
@@ -102,7 +123,11 @@ class UnisenderFixtureMixin:
         self.router.add(mock)
         return mock
 
-    def _assert_request_fields(self, mock, expected_fields):
+    def _assert_request_fields(
+        self,
+        mock: Mock,
+        expected_fields: dict[str, Any],
+    ) -> None:
         """Проверяет поля тела исходящего form-urlencoded запроса."""
         mock.assert_called_once()
         assert self._parse_request_fields(mock.calls[0]) == {
@@ -110,7 +135,11 @@ class UnisenderFixtureMixin:
             for key, field_value in expected_fields.items()
         }
 
-    def _assert_last_request_fields(self, mock, expected_fields):
+    def _assert_last_request_fields(
+        self,
+        mock: Mock,
+        expected_fields: dict[str, Any],
+    ) -> None:
         """
         Проверяет поля последнего исходящего запроса.
 
@@ -122,8 +151,9 @@ class UnisenderFixtureMixin:
             for key, field_value in expected_fields.items()
         }
 
-    def _parse_request_fields(self, request):
+    def _parse_request_fields(self, request: zapros.Request) -> dict[str, str]:
         """Разбирает поля тела исходящего form-urlencoded запроса."""
+        assert isinstance(request.body, bytes)
         body = request.body.decode("utf-8")
         fields = parse_qs(body, keep_blank_values=True)
         return {key: field_value[0] for key, field_value in fields.items()}
@@ -132,7 +162,8 @@ class UnisenderFixtureMixin:
 class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
     """HTTP-клиент Unisender: сборка и отправка формы importContacts."""
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
         """Настраивает тест клиента Unisender."""
         super().setUp()
 
@@ -141,7 +172,7 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
             api_key=self.api_key,
             platform=self.platform,
         )
-        self.payload = {
+        self.payload: dict[str, Any] = {
             "field_names": CONTACT_FIELDS,
             "data": [[self.email, self.list_id]],
             "overwrite_lists": 1,
@@ -151,7 +182,7 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
             list_id=self.list_id,
             api_key=self.api_key,
             overwrite_lists=1,
-            format_=settings.DEFAULT_CONF[FORMAT_FIELD],
+            format_=settings.DEFAULT_CONF[FORMAT_FIELD] or "format",
             platform=self.platform,
         )
         self.import_mock = self._mock_request(
@@ -161,14 +192,14 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
             {RESULT_FIELD: {"total": 1}},
         )
 
-    def test_build_request_data_flattens_payload(self):
+    def test_build_request_data_flattens_payload(self) -> None:
         """Вложенный payload разворачивается в плоские поля."""
         # ruff: ignore[private-member-access]
         request_fields = self.unisender._build_request_data(self.payload)
 
         assert request_fields == self.expected_request_fields
 
-    def test_api_request_posts_form_to_unisender(self):
+    def test_api_request_posts_form_to_unisender(self) -> None:
         """_api_request отправляет данные в Unisender и возвращает ответ."""
         # ruff: ignore[private-member-access]
         response = self.unisender._api_request("import_contacts", self.payload)
@@ -180,7 +211,7 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
             self.expected_request_fields,
         )
 
-    def test_api_request_raises_on_error_status(self):
+    def test_api_request_raises_on_error_status(self) -> None:
         """Ненормативный статус Unisender приводит к StatusCodeError."""
         # ruff: ignore[private-member-access]
         url = self.unisender._get_request_url("get_template")
@@ -200,33 +231,38 @@ class UnisenderClientTest(UnisenderFixtureMixin, SimpleTestCase):
 
 
 @pytest.fixture
-def ad_donor_data(db, faker):
+def ad_donor_data(db: object, faker: Faker) -> tuple[str, str]:
     """Настраивает данные для проверки сохранения и workflow."""
     return faker.unique.email(), SubscriptionStatuses.ACTIVE.capitalized
 
 
 @pytest.fixture
-def sync_task():
+def sync_task() -> Generator[MagicMock]:
     """Изолирует публикацию задачи отправки контактов."""
     with patch("api.donor_service.send_users_to_unisender") as task:
         yield task
 
 
 @pytest.fixture
-def email_task():
+def email_task() -> Generator[MagicMock]:
     """Изолирует создание задачи отправки письма."""
     with patch("api.donor_service.send_payment_email_task") as task:
         yield task
 
 
 @pytest.fixture
-def chain_factory():
+def chain_factory() -> Generator[MagicMock]:
     """Изолирует публикацию цепочки в брокер."""
     with patch("api.donor_service.chain") as factory:
         yield factory
 
 
-def _rollback_donor_transaction(email, subscription, update):
+def _rollback_donor_transaction(
+    email: str,
+    subscription: str,
+    *,
+    update: bool,
+) -> None:
     """Откатывает транзакцию БД после вызова ad_donor (для теста ошибки)."""
     with transaction.atomic():
         ad_donor(email, subscription, update=update)
@@ -234,10 +270,10 @@ def _rollback_donor_transaction(email, subscription, update):
 
 
 def test_ad_donor_saves_donor_and_publishes_task(
-    ad_donor_data,
-    sync_task,
-    django_capture_on_commit_callbacks,
-):
+    ad_donor_data: tuple[str, str],
+    sync_task: MagicMock,
+    django_capture_on_commit_callbacks: Any,
+) -> None:
     """ad_donor сохраняет донора и публикует задачу после commit."""
     email, subscription = ad_donor_data
 
@@ -258,10 +294,10 @@ def test_ad_donor_saves_donor_and_publishes_task(
 
 
 def test_ad_donor_uses_overwrite_lists_for_update(
-    ad_donor_data,
-    sync_task,
-    django_capture_on_commit_callbacks,
-):
+    ad_donor_data: tuple[str, str],
+    sync_task: MagicMock,
+    django_capture_on_commit_callbacks: Any,
+) -> None:
     """При обновлении донора передаётся overwrite_lists=1."""
     email, subscription = ad_donor_data
     donor = Donor.objects.create(
@@ -292,10 +328,10 @@ def test_ad_donor_uses_overwrite_lists_for_update(
 
 @pytest.mark.django_db(transaction=True)
 def test_ad_donor_skips_task_before_commit(
-    ad_donor_data,
-    sync_task,
-    django_capture_on_commit_callbacks,
-):
+    ad_donor_data: tuple[str, str],
+    sync_task: MagicMock,
+    django_capture_on_commit_callbacks: Any,
+) -> None:
     """Задача не публикуется до commit транзакции."""
     email, subscription = ad_donor_data
     signature = sync_task.si.return_value
@@ -314,10 +350,10 @@ def test_ad_donor_skips_task_before_commit(
 
 
 def test_ad_donor_rolls_back_on_transaction_error(
-    ad_donor_data,
-    sync_task,
-    django_capture_on_commit_callbacks,
-):
+    ad_donor_data: tuple[str, str],
+    sync_task: MagicMock,
+    django_capture_on_commit_callbacks: Any,
+) -> None:
     """При ошибке транзакции донор не сохраняется."""
     email, subscription = ad_donor_data
 
@@ -335,12 +371,12 @@ def test_ad_donor_rolls_back_on_transaction_error(
 
 
 def test_ad_donor_publishes_email_after_unisender(
-    ad_donor_data,
-    sync_task,
-    email_task,
-    chain_factory,
-    django_capture_on_commit_callbacks,
-):
+    ad_donor_data: tuple[str, str],
+    sync_task: MagicMock,
+    email_task: MagicMock,
+    chain_factory: MagicMock,
+    django_capture_on_commit_callbacks: Any,
+) -> None:
     """Письмо публикуется после задачи отправки в Unisender."""
     email, subscription = ad_donor_data
 
@@ -381,7 +417,8 @@ def test_ad_donor_publishes_email_after_unisender(
 class SendPaymentEmailTest(UnisenderFixtureMixin, SimpleTestCase):
     """send_payment_email: сначала getTemplate, затем sendEmail."""
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
         """Настраивает зависимости теста."""
         super().setUp()
 
@@ -420,7 +457,7 @@ class SendPaymentEmailTest(UnisenderFixtureMixin, SimpleTestCase):
             {RESULT_FIELD: {"email_id": self.fake.random_int(min=1)}},
         )
 
-    def test_sends_email_using_fetched_template(self):
+    def test_sends_email_using_fetched_template(self) -> None:
         """Письмо отправляется по шаблону, полученному из Unisender."""
         send_payment_email(self.email, self.list_id)
 
@@ -437,7 +474,8 @@ class SendPaymentEmailTest(UnisenderFixtureMixin, SimpleTestCase):
 class SendRequestTest(UnisenderFixtureMixin, SimpleTestCase):
     """send_request: запрос экспорта контактов (exportContacts)."""
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
         """Настраивает зависимости теста."""
         super().setUp()
 
@@ -459,7 +497,7 @@ class SendRequestTest(UnisenderFixtureMixin, SimpleTestCase):
             self.response_data,
         )
 
-    def test_exports_contacts_via_unisender(self):
+    def test_exports_contacts_via_unisender(self) -> None:
         """Запрос на экспорт уходит в Unisender, возвращается его ответ."""
         extern_response_data = send_request(self.list_id)
 

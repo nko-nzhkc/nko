@@ -1,6 +1,7 @@
 """Тесты Celery-задач API."""
 
-from unittest.mock import patch
+from collections.abc import Iterator
+from unittest.mock import MagicMock, patch
 
 import pytest
 import zapros
@@ -15,11 +16,12 @@ from celery.exceptions import Retry
 from contacts.models import Donor
 from donor_base.constants import SubscriptionStatuses
 from donor_base.subscriptions import get_group_by_capitalized
+from faker import Faker
 from rest_framework import status
 
 
 @pytest.fixture(autouse=True)
-def task_retry():
+def task_retry() -> Iterator[MagicMock]:
     """Подменяет общий механизм retry для задач этого модуля."""
     with patch.object(
         Task,
@@ -31,7 +33,7 @@ def task_retry():
 
 
 @pytest.fixture
-def donors(db, faker):
+def donors(db: object, faker: Faker) -> list[Donor]:
     """Создаёт доноров для выполнения реального сценария."""
     return [
         Donor.objects.create(
@@ -46,7 +48,7 @@ def donors(db, faker):
 
 
 @pytest.fixture(autouse=True)
-def api_request():
+def api_request() -> Iterator[MagicMock]:
     """Изолирует отправку запроса во внешний Unisender."""
     with patch(
         "donor_base.unisender_client.Client._api_request",
@@ -72,11 +74,11 @@ def api_request():
     ids=["base", "connection", "timeout", "read", "write", "400", "503"],
 )
 def test_retries_zapros_errors(
-    error,
-    donors,
-    api_request,
-    task_retry,
-):
+    error: zapros.ZaprosError,
+    donors: list[Donor],
+    api_request: MagicMock,
+    task_retry: MagicMock,
+) -> None:
     """Любое исключение zapros приводит к Celery retry."""
     api_request.side_effect = error
 
@@ -95,12 +97,12 @@ def test_retries_zapros_errors(
     ],
 )
 def test_executes_use_case(
-    selection,
-    overwrite_lists,
-    donors,
-    api_request,
-    task_retry,
-):
+    selection: str,
+    overwrite_lists: int,
+    donors: list[Donor],
+    api_request: MagicMock,
+    task_retry: MagicMock,
+) -> None:
     """Задача передаёт клиент из DI и выполняет сценарий."""
     if selection == "all":
         selected = donors
@@ -130,10 +132,10 @@ def test_executes_use_case(
 
 
 def test_does_not_retry_unrelated_error(
-    donors,
-    api_request,
-    task_retry,
-):
+    donors: list[Donor],
+    api_request: MagicMock,
+    task_retry: MagicMock,
+) -> None:
     """Ошибка вне иерархии zapros не приводит к retry."""
     error = ValueError("Invalid data")
     api_request.side_effect = error
@@ -145,7 +147,7 @@ def test_does_not_retry_unrelated_error(
     task_retry.assert_not_called()
 
 
-def test_retry_configuration():
+def test_retry_configuration() -> None:
     """Первый запуск и два повтора дают три попытки."""
     assert send_users_to_unisender.autoretry_for == (zapros.ZaprosError,)
     assert send_users_to_unisender.max_retries == 2
@@ -159,11 +161,11 @@ def test_retry_configuration():
     ],
 )
 def test_import_failure_does_not_send_email(
-    error,
-    expected_exception,
-    donors,
-    api_request,
-):
+    error: Exception,
+    expected_exception: type[Exception],
+    donors: list[Donor],
+    api_request: MagicMock,
+) -> None:
     """Retry или ошибка импорта не запускает следующую задачу."""
     api_request.side_effect = error
     donor = donors[0]
