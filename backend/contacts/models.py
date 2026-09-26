@@ -55,7 +55,8 @@ class Donor(models.Model):
     )
     subscription = models.TextField(
         choices=[
-            (status.name, status.verbosed) for status in SubscriptionStatuses
+            (status.capitalized, status.verbosed)
+            for status in SubscriptionStatuses
         ],
         verbose_name="Статус подписки у донора",
     )

@@ -11,6 +11,8 @@ class PaymentStatuses(Enum):
 
 
 class SubscriptionStatuses(Enum):
+    # TODO: поправить докстринг с учетом изменения логики переопределения
+    # value и verbosed значения
     """Класс статусов подписок.
 
     Формат:
