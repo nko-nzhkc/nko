@@ -4,7 +4,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .mixins import ViewListCreateMixinsSet
-from .permissions import IsAdmin
 from .serializers import (
     ForbiddenwordSerializer,
     CloudpaymentsSerializer,
@@ -56,7 +55,6 @@ class ForbiddenwordViewSet(ViewListCreateMixinsSet):
 
     queryset = ForbiddenWord.objects.all()
     serializer_class = ForbiddenwordSerializer
-    permission_classes = [IsAdmin]
     pagination_class = None
 
 
