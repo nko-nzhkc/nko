@@ -1,17 +1,12 @@
 # Модуль представлений проекта.
-from django.http import JsonResponse
-from django.views import View
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .mixins import ViewListCreateMixinsSet
-from .permissions import IsAdmin
 from .serializers import (
-    ContactSerializer,
     ForbiddenwordSerializer,
     CloudpaymentsSerializer,
-    MixPlatSerializer,
 )
 from .utils import (
     add_contacts,
@@ -19,17 +14,13 @@ from .utils import (
     mixplat_request_handler,
     send_request,
 )
-from contacts.models import Contact
 from forbiddenwords.models import ForbiddenWord
 from mixplat.models import MixPlat
 from cloudpayments.models import CloudPayment
 
 
-class ContactViewSet(viewsets.ModelViewSet):
+class ContactViewSet(viewsets.GenericViewSet):
     """Вьюсет контактов."""
-
-    queryset = Contact.objects.all()
-    serializer_class = ContactSerializer
 
     @action(detail=False, url_path="start", methods=("post",))
     def start(self, request):
@@ -64,15 +55,11 @@ class ForbiddenwordViewSet(ViewListCreateMixinsSet):
 
     queryset = ForbiddenWord.objects.all()
     serializer_class = ForbiddenwordSerializer
-    permission_classes = [IsAdmin]
     pagination_class = None
 
 
-class MixplatViewSet(viewsets.ModelViewSet):
+class MixplatViewSet(viewsets.GenericViewSet):
     """Вьюсет Mixplat."""
-
-    queryset = MixPlat.objects.all()
-    serializer_class = MixPlatSerializer
 
     @action(detail=False, url_path="payment_status", methods=("post",))
     def payment_status(self, request):
@@ -81,15 +68,11 @@ class MixplatViewSet(viewsets.ModelViewSet):
 
 
 class CloudPaymentsViewSet(viewsets.GenericViewSet):
-    """
-    Вьюсет для Cloudpayment.
-    """
+    """Вьюсет для Cloudpayment."""
 
     @action(detail=False, url_path="create_cloudpayment", methods=["post"])
     def create_cloudpayment(self, request):
-        """
-        Создание экземпляра Cloudpayment.
-        """
+        """Создание экземпляра Cloudpayment."""
         serializer = CloudpaymentsSerializer(
             data=handling_cloudpayment_data(request)
         )
@@ -99,16 +82,13 @@ class CloudPaymentsViewSet(viewsets.GenericViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class PaymentsListView(View):
-    model = None
+class PaymentsListViewSet(viewsets.GenericViewSet):
+    """Список всех платежей (Mixplat + CloudPayments)."""
 
-    def get(self, request, *args, **kwargs):
-        mixplat_payments = MixPlat.objects.all()
-        cloudpayment_payments = CloudPayment.objects.all()
-
-        all_payments_list = mixplat_payments.union(cloudpayment_payments)
-        all_payments_list = all_payments_list.order_by("-pub_date")
-
-        payments_data = list(all_payments_list.values())
-
-        return JsonResponse({"payments_list": payments_data})
+    def list(self, request, *args, **kwargs):
+        payments = (
+            MixPlat.objects.all()
+            .union(CloudPayment.objects.all())
+            .order_by("-pub_date")
+        )
+        return Response({"payments_list": list(payments.values())})
