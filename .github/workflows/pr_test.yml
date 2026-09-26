@@ -37,7 +37,7 @@ jobs:
 
       - name: Type check with mypy
         run: |
-          poetry run mypy backend/
+          poetry run mypy backend/ tests/
 
       - name: Check migrations
         run: |
