@@ -1,12 +1,12 @@
 # Модуль админки модели платежа Mixplat.
 from django.contrib import admin
-
-from .models import MixPlat
 from donor_base.constants import EMPTY_VALUE
+
+from mixplat.models import MixPlat
 
 
 @admin.register(MixPlat)
-class DonationAdmin(admin.ModelAdmin):
+class DonationAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     """Админ зона платежа Mixplat."""
 
     list_display = (

@@ -183,12 +183,12 @@ https://www.unisender.com/ru/support/api/common/bulk-email/
 Базовые настройки интеграции с Unisender API описаны в конфигурационном файле проекта:
 ```python
 DEFAULT_CONF = {
-        "base_url": "https://api.unisender.com",
-        "lang": "en",
-        'format': 'json',
-        "api_key": None,
-        'platform': None,
-    }
+    "base_url": "https://api.unisender.com",
+    "lang": "en",
+    "format": "json",
+    "api_key": None,
+    "platform": None,
+}
 ```
 Для получения "api_key" потребуется регистрация в сервисе Unisender, сгенерированный ключ станет доступен в настройках 
 аккаунта.

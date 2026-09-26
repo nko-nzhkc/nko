@@ -1,14 +1,14 @@
 """Тесты репозиториев API."""
 
 import pytest
-
 from api.repositories import DonorRepository
 from contacts.models import Donor
 from donor_base.constants import SubscriptionStatuses
+from faker.proxy import Faker
 
 
 @pytest.fixture
-def donors(db, faker):
+def donors(db: object, faker: Faker) -> list[Donor]:
     """Создаёт доноров с разными статусами подписки."""
     return [
         Donor.objects.create(
@@ -17,7 +17,7 @@ def donors(db, faker):
         )
         for subscription in (
             SubscriptionStatuses.ACTIVE.capitalized,
-            SubscriptionStatuses.INACTIVE.capitalized
+            SubscriptionStatuses.INACTIVE.capitalized,
         )
     ]
 
@@ -26,7 +26,10 @@ def donors(db, faker):
     "selection",
     ["all", "selected", "empty", "missing"],
 )
-def test_get_donors_returns_email_and_subscription(donors, selection):
+def test_get_donors_returns_use_case_data(
+    donors: list[Donor],
+    selection: str,
+) -> None:
     """Репозиторий возвращает данные, нужные use case."""
     if selection == "all":
         donor_ids = None
@@ -42,11 +45,8 @@ def test_get_donors_returns_email_and_subscription(donors, selection):
         expected_donors = []
 
     actual = list(
-        DonorRepository().get_donors(donor_ids=donor_ids)
+        DonorRepository().get_donors(donor_ids=donor_ids),
     )
-    expected = [
-        (donor.email, donor.subscription)
-        for donor in expected_donors
-    ]
+    expected = [(donor.email, donor.subscription) for donor in expected_donors]
 
     assert sorted(actual) == sorted(expected)

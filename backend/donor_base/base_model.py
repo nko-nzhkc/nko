@@ -1,12 +1,15 @@
 # Модуль базовой модели для всех пожертвований.
+from api.validators import forbidden_words_validator
 from django.db import models
 
-from api.validators import forbidden_words_validator
-
 from donor_base.constants import (
-    PAYMENT_METHOD_LENGTH, DEFAULT_DONATION, MAX_EMAIL_LENGTH,
-    MAX_CURRENCY_LENGTH, MAX_PAYMENT_OPERATOR_LENGTH,
-    MAX_PAYMENT_ID_LENGTH, MAX_PAYMENT_STATUS_LENGTH
+    DEFAULT_DONATION,
+    MAX_CURRENCY_LENGTH,
+    MAX_EMAIL_LENGTH,
+    MAX_PAYMENT_ID_LENGTH,
+    MAX_PAYMENT_OPERATOR_LENGTH,
+    MAX_PAYMENT_STATUS_LENGTH,
+    PAYMENT_METHOD_LENGTH,
 )
 
 
@@ -19,7 +22,6 @@ class BaseModelDonation(models.Model):
         verbose_name="Электронная почта",
     )
     donat = models.PositiveSmallIntegerField(
-        # choices=settings.AMOUNT,
         default=DEFAULT_DONATION,
         verbose_name="Размер пожертвования",
     )
@@ -66,7 +68,7 @@ class BaseModelDonation(models.Model):
     )
     currency = models.CharField(
         max_length=MAX_CURRENCY_LENGTH,
-        verbose_name="Валюта платежа"
+        verbose_name="Валюта платежа",
     )
 
     class Meta:

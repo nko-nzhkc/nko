@@ -29,6 +29,11 @@ dev = [
     "flake8 (>=7,<8)",
     "faker (>=40.39.0,<41.0.0)",
     "flake8-pyproject (>=1.2.4,<2.0.0)",
+    "mypy (>=1.18.2,<1.19.0)",
+    "django-stubs[compatible-mypy] (>=6.1.1,<7.0.0)",
+    "djangorestframework-stubs[compatible-mypy] (>=3.18.1,<4.0.0)",
+    "wemake-python-styleguide (>=1.8.1,<2.0.0)",
+    "ruff (>=0.16.8,<1.0.0)",
 ]
 production = [
     "gunicorn (>=21.0,<22.0)",
@@ -40,3 +45,192 @@ package-mode = false
 [build-system]
 requires = ["poetry-core>=2.0,<3.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "donor_base.settings"
+django_find_project = false
+testpaths = ["tests"]
+pythonpath = ["backend", "."]
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+
+[tool.mypy]
+python_version = "3.13"
+plugins = [
+    "mypy_django_plugin.main",
+    "mypy_drf_plugin.main",
+]
+
+mypy_path = "backend"
+strict = true
+pretty = true
+show_error_codes = true
+show_column_numbers = true
+warn_unreachable = true
+extra_checks = true
+strict_equality_for_none = true
+exclude = [
+    "^backend/.*/migrations/.*$",
+]
+
+enable_error_code = [
+  "deprecated",
+  "exhaustive-match",
+  "explicit-override",
+  "ignore-without-code",
+  "possibly-undefined",
+  "redundant-expr",
+  "redundant-self",
+  "truthy-bool",
+  "truthy-iterable",
+  "unimported-reveal",
+  "unused-awaitable",
+]
+
+[[tool.mypy.overrides]]
+module = "celery.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "faker.*"
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "donor_base.settings"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 80
+preview = true
+fix = true
+exclude = [
+  "*/migrations/*",
+  "docs",
+  "backend/static",
+  "media",
+  ".venv",
+  ".vscode",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+  "A",
+  "ASYNC",
+  "B",
+  "C4",
+  "C90",
+  "COM",
+  "D",
+  "DJ",
+  "DTZ",
+  "E",
+  "ERA",
+  "EXE",
+  "F",
+  "FBT",
+  "FLY",
+  "FURB",
+  "G",
+  "I",
+  "ICN",
+  "INT",
+  "ISC",
+  "LOG",
+  "N",
+  "PERF",
+  "PIE",
+  "PL",
+  "PT",
+  "PTH",
+  "Q",
+  "RET",
+  "RSE",
+  "RUF",
+  "S",
+  "SIM",
+  "SLF",
+  "SLOT",
+  "debugger",
+  "TID",
+  "TRY",
+  "UP",
+  "W",
+  "YTT",
+]
+ignore = [
+  "stdlib-module-shadowing",
+  "undocumented-public-module",
+  "undocumented-public-package",
+  "undocumented-public-nested-class",
+  "incorrect-blank-line-before-class",
+  "multi-line-summary-first-line",
+  "non-imperative-mood",
+  "docstring-starts-with-this",
+  "non-capitalized-section-name",
+  "overload-with-docstring",
+  "django-model-without-dunder-str",
+  "single-line-implicit-string-concatenation",
+  "explicit-string-concatenation",
+  "useless-import-alias",
+  "PLR09",
+  "magic-value-comparison",
+  "no-self-use",
+  "redefined-loop-name",
+  "unused-async",
+  "non-empty-init-module",
+  "raise-vanilla-args",
+  "ambiguous-unicode-character-docstring",
+  "import-outside-top-level",
+  "ambiguous-unicode-character-string",
+  "ambiguous-unicode-character-docstring",
+  "ambiguous-unicode-character-comment",
+]
+external = [ "WPS" ]
+
+flake8-gettext.extend-function-names = [ "_" ]
+flake8-quotes.inline-quotes = "double"
+
+isort.known-first-party = [ "server", "examples" ]
+mccabe.max-complexity = 6
+pydocstyle.convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["assert"]
+"backend/manage.py" = ["shebang-not-executable"]
+
+[tool.flake8]
+format = "wemake"
+show-source = true
+statistics = false
+doctests = true
+
+max-complexity = 6
+max-line-length = 80
+max-imports = 25
+max-arguments = 6
+
+allowed-domain-names = ["data"]
+
+select = ["WPS", "E99"]
+
+ignore = ["WPS412"]
+
+per-file-ignores = [
+    "backend/donor_base/settings.py: WPS407, WPS226",
+    "tests/*: WPS202",
+    "backend/donor_base/__init__.py:WPS410",
+    "backend/manage.py: WPS453",
+    "backend/api/use_cases.py: WPS111",
+]
+
+extend-exclude = [
+    ".venv",
+    ".vscode/",
+    "docs/",
+    "*/migrations/*",
+    "backend/static/",
+    "media/",
+]

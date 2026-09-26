@@ -1,12 +1,15 @@
 # Модуль модели контактов.
-from django.contrib.auth.models import AbstractUser
-from django.db import models
+from typing import override
 
 from api.validators import forbidden_words_validator
-
+from django.contrib.auth.models import AbstractUser
+from django.db import models
 from donor_base.constants import (
-    DEFAULT_DONATION, MAX_USERNAME_LENGTH, MAX_EMAIL_LENGTH,
-    MAX_SUBJECT_LENGTH, SubscriptionStatuses
+    DEFAULT_DONATION,
+    MAX_EMAIL_LENGTH,
+    MAX_SUBJECT_LENGTH,
+    MAX_USERNAME_LENGTH,
+    SubscriptionStatuses,
 )
 
 
@@ -26,21 +29,24 @@ class Contact(AbstractUser):
         verbose_name="Электронная почта",
     )
     subject = models.CharField(
-        max_length=MAX_SUBJECT_LENGTH, verbose_name="Тема письма"
+        max_length=MAX_SUBJECT_LENGTH,
+        verbose_name="Тема письма",
     )
     comment = models.TextField(verbose_name="Комментарий")
 
     class Meta:
         verbose_name = "Контакт"
         verbose_name_plural = "Контакты"
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
                 fields=["username", "email"],
                 name="Уникальное имя пользователя и электронная почта",
-            )
-        ]
+            ),
+        )
 
-    def __str__(self):
+    @override
+    def __str__(self) -> str:
+        """Возвращает строковое представление контакта."""
         return f"{self.username} - {self.email}"
 
 
@@ -68,5 +74,7 @@ class Donor(models.Model):
         verbose_name = "Донор"
         verbose_name_plural = "Доноры"
 
-    def __str__(self):
+    @override
+    def __str__(self) -> str:
+        """Строковое представление для модели Donor."""
         return self.email

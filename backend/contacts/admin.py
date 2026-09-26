@@ -1,12 +1,12 @@
 # Модуль админки модели контакты.
 from django.contrib import admin
-
-from .models import Contact, Donor
 from donor_base.constants import EMPTY_VALUE
+
+from contacts.models import Contact, Donor
 
 
 @admin.register(Contact)
-class ContactAdmin(admin.ModelAdmin):
+class ContactAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     """Админ зона контактов."""
 
     list_display = ("username", "email", "subject", "comment")
@@ -15,7 +15,7 @@ class ContactAdmin(admin.ModelAdmin):
 
 
 @admin.register(Donor)
-class DonorAdmin(admin.ModelAdmin):
+class DonorAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     """Админ зона доноров."""
 
     list_display = ("email", "subscription", "count_declined")

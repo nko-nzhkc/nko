@@ -1,12 +1,12 @@
 # Модуль админки запрещенных слов.
 from django.contrib import admin
-
-from .models import ForbiddenWord
 from donor_base.constants import EMPTY_VALUE
+
+from forbiddenwords.models import ForbiddenWord
 
 
 @admin.register(ForbiddenWord)
-class ForbiddenWordAdmin(admin.ModelAdmin):
+class ForbiddenWordAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     """Админ зона для запрещенных слов."""
 
     list_display = ("forbidden_word",)

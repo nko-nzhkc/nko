@@ -1,13 +1,13 @@
 # Модуль админки модели пожертвований Cloudpayment.
 from django.contrib import admin
-
-from .models import CloudPayment
 from donor_base.constants import EMPTY_VALUE
+
+from cloudpayments.models import CloudPayment
 
 
 @admin.register(CloudPayment)
-class CloudPaymentAdmin(admin.ModelAdmin):
-    """Админ зона пожертвований Cloudpayment"""
+class CloudPaymentAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
+    """Админ зона пожертвований Cloudpayment."""
 
     list_display = (
         "email",

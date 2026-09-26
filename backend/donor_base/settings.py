@@ -5,11 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 
-DEBUG = os.getenv("DEBUG", "").lower() in ["true", "yes", "1"]
+DEBUG = os.getenv("DEBUG", "").lower() in {"true", "yes", "1"}
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
@@ -71,8 +72,8 @@ DATABASES = {
         "USER": os.getenv("POSTGRES_USER", "django"),
         "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
         "HOST": os.getenv("DB_HOST", ""),
-        "PORT": os.getenv("DB_PORT", 5432),
-    }
+        "PORT": os.getenv("DB_PORT", "5432"),
+    },
 }
 
 LOGGING = {
@@ -82,7 +83,7 @@ LOGGING = {
         "verbose": {
             "format": "{levelname} {asctime} {module} {message}",
             "style": "{",
-        }
+        },
     },
     "handlers": {
         "file": {
@@ -100,16 +101,16 @@ LOGGING = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",  # noqa: E501
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",  # ruff: ignore[line-too-long]
     },
     {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",  # noqa: E501
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",  # ruff: ignore[line-too-long]
     },
     {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",  # noqa: E501
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",  # ruff: ignore[line-too-long]
     },
     {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",  # noqa: E501
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",  # ruff: ignore[line-too-long]
     },
 ]
 
@@ -124,18 +125,19 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",  # noqa: E501
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",  # ruff: ignore[line-too-long]
     "PAGE_SIZE": 3,
 }
 
 STATIC_URL = os.getenv("STATIC_URL", "/static/")
 
 # Папка со статикой внутри контейнера backend
-STATIC_ROOT = os.path.join(BASE_DIR, "static")
+STATIC_ROOT = BASE_DIR / "static"
 
 # Для работы на сервере
 CELERY_BROKER_URL = os.getenv(
-    "CELERY_BROKER_URL", "amqp://user:password@rabbitmq:5672//"
+    "CELERY_BROKER_URL",
+    "amqp://user:password@rabbitmq:5672//",
 )
 
 CELERY_ACCEPT_CONTENT = ["application/json"]
@@ -144,16 +146,17 @@ CELERY_TIMEZONE = "Europe/Moscow"
 
 CELERY_TASK_TRACK_STARTED = True
 
-CELERY_TASK_TIME_LIMIT = 30 * 60
+_MINUTES_PER_HOUR = 60
+_TASK_TIME_LIMIT_HOURS = 30
 
-CELERY_BEAT_SCHEDULE = {}
+CELERY_TASK_TIME_LIMIT = _TASK_TIME_LIMIT_HOURS * _MINUTES_PER_HOUR
 
 # Константы проекта
 
-
 CLOUDPAYMENTS_PUBLIC_ID = os.getenv("CLOUDPAYMENTS_PUBLIC_ID")
-CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL = os.getenv(
-    "CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL"
+CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL: str = os.getenv(
+    "CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL",
+    "",
 )
 CLOUDPAYMENTS_API_SECRET = os.getenv("CLOUDPAYMENTS_API_SECRET")
 CLOUDPAYMENTS_API_TEST_URL = os.getenv("CLOUDPAYMENTS_API_TEST_URL")
@@ -167,7 +170,7 @@ DEFAULT_CONF = {
 }
 
 EXPORT_UNISENDER = "https://api.unisender.com/ru/api/async/exportContacts"
-UNISENDER_API_KEY = os.getenv("UNISENDER_API_KEY")
+UNISENDER_API_KEY: str = os.getenv("UNISENDER_API_KEY", "")
 NOTIFY_URL = "https://foodgrampyengineer.ru/api/contacts/get_contacts/"
 URL_SEND_EMAIL = "https://api.unisender.com/ru/api/sendEmail"
 URL_GET_TEMP = "https://api.unisender.com/ru/api/getTemplate"

@@ -1,9 +1,9 @@
 from enum import Enum
-from typing import ClassVar
+from typing import Self
 
 
-class PaymentStatuses(Enum):
-    """Класс статусов платежей."""
+class FailedPaymentStatuses(Enum):
+    """Класс статусов не прошедших платежей."""
 
     CANCELLED = "Cancelled"
     DECLINED = "Declined"
@@ -25,35 +25,40 @@ class SubscriptionStatuses(Enum):
     INACTIVE = ("Подписка отсутствует", "Inactive", "7")
     LOST = ("Подписка утрачена", "Lost", "9")
 
-    verbosed: ClassVar[str]
-    capitalized: ClassVar[str]
-    group_id: ClassVar[str]
+    verbosed: str
+    capitalized: str
+    group_id: str
 
-    def __new__(cls, verbosed, capitalized, group_id):
+    def __new__(
+        cls,
+        verbosed: str,
+        capitalized: str,
+        group_id: str,
+    ) -> Self:
         """
         Переопределение создания энум-констант.
 
         Нужно для быстрого обращения к атрибутам констант.
         """
-
-        obj = object.__new__(cls)
-        obj._value_ = (verbosed, capitalized, group_id)
-        obj.verbosed = verbosed
-        obj.capitalized = capitalized
-        obj.group_id = group_id
-        return obj
+        status = object.__new__(cls)
+        status._value_ = (verbosed, capitalized, group_id)
+        status.verbosed = verbosed
+        status.capitalized = capitalized
+        status.group_id = group_id
+        return status
 
 
 NEGATIVE_SUB_STAT = (
     SubscriptionStatuses.LOST.capitalized,
-    SubscriptionStatuses.INACTIVE.capitalized
-    )
+    SubscriptionStatuses.INACTIVE.capitalized,
+)
 
 PAYMENT_METHOD_LENGTH = 64
 
 DEFAULT_DONATION = 0
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+DEFAULT_TZ = "UTC"
 
 EMPTY_VALUE = "-пусто-"
 
