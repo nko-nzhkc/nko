@@ -11,14 +11,12 @@ class PaymentStatuses(Enum):
 
 
 class SubscriptionStatuses(Enum):
-    # TODO: поправить докстринг с учетом изменения логики переопределения
-    # value и verbosed значения
     """Класс статусов подписок.
 
     Формат:
     name = (verbosed, capitalized, group_id)
 
-    value:       русская расшифровка статуса
+    verbosed:    русская расшифровка статуса
     capitalized: name в формате записи capitilized
     group_id:    ид группы.
     """
