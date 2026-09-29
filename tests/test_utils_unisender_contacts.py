@@ -38,7 +38,10 @@ def test_send_payment_email_stops_when_template_is_not_returned(settings):
     """Если шаблон не получен, письмо не отправляется."""
     template_response = Mock(json={"error": "not found", "code": 404})
 
-    with patch("api.utils.http_client.post_form", return_value=template_response) as post_form:  # noqa: E501
+    with patch(
+        "api.utils.http_client.post_form",
+        return_value=template_response
+    ) as post_form:
         send_payment_email("donor@example.com", "5")
 
     post_form.assert_called_once_with(
@@ -53,7 +56,9 @@ def test_send_payment_email_stops_when_template_is_not_returned(settings):
 
 def test_send_payment_email_handles_send_error(settings):
     """Ошибка sendEmail не ломает выполнение после успешного getTemplate."""
-    template_response = Mock(json={"result": {"subject": "Subject", "body": "Body"}})  # noqa: E501
+    template_response = Mock(
+        json={"result": {"subject": "Subject", "body": "Body"}}
+    )
     send_response = Mock(json={"error": "bad email", "code": 400})
 
     with patch(
@@ -94,7 +99,10 @@ def test_send_payment_email_handles_send_error(settings):
         {"unknown": "payload"},
     ],
 )
-def test_send_request_returns_none_for_unisender_errors(settings, response_data):  # noqa: E501
+def test_send_request_returns_none_for_unisender_errors(
+    settings,
+    response_data
+):
     """Ошибочный exportContacts возвращает None вместо payload."""
     with patch(
         "api.utils.http_client.post_form",

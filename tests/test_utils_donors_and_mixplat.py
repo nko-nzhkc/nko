@@ -83,7 +83,9 @@ def test_string_to_date_returns_aware_datetime():
 
 @pytest.mark.django_db
 def test_donor_exists_returns_both_boolean_values(faker):
-    """Проверка наличия донора возвращает False и True в зависимости от БД."""  # noqa: E501
+    """Проверка наличия донора возвращает False и True
+    в зависимости от БД.
+    """
     email = faker.unique.email()
 
     assert donor_exists(email) is False
@@ -110,7 +112,9 @@ def test_create_or_update_donor_creates_new_donor(
     workflow_mocks,
     django_capture_on_commit_callbacks,
 ):
-    """Новый донор создаётся как Active или Inactive согласно платежной системе."""  # noqa: E501
+    """Новый донор создаётся как Active или Inactive
+    согласно платежной системе.
+    """
     sync_task, email_task, chain_factory = workflow_mocks
 
     with django_capture_on_commit_callbacks(execute=True):
@@ -191,7 +195,9 @@ def test_create_or_update_donor_increments_active_donor_declines(payment_data):
     )
     payment_data["status"] = PaymentStatuses.FAILURE
 
-    create_or_update_donor(payment_data, SubscriptionStatuses.ACTIVE.capitalized)  # noqa: E501
+    create_or_update_donor(
+        payment_data, SubscriptionStatuses.ACTIVE.capitalized
+    )
 
     donor.refresh_from_db()
     assert donor.subscription == SubscriptionStatuses.ACTIVE.capitalized
@@ -210,7 +216,9 @@ def test_create_or_update_donor_ignores_failed_payment_for_inactive_donor(
     )
     payment_data["status"] = PaymentStatuses.CANCELLED
 
-    create_or_update_donor(payment_data, SubscriptionStatuses.INACTIVE.capitalized)  # noqa: E501
+    create_or_update_donor(
+        payment_data, SubscriptionStatuses.INACTIVE.capitalized
+    )
 
     donor.refresh_from_db()
     assert donor.subscription == SubscriptionStatuses.INACTIVE.capitalized
@@ -262,7 +270,9 @@ def test_create_or_update_donor_resets_active_donor_declines_after_success(
         count_declined=2,
     )
 
-    create_or_update_donor(payment_data, SubscriptionStatuses.ACTIVE.capitalized)  # noqa: E501
+    create_or_update_donor(
+        payment_data, SubscriptionStatuses.ACTIVE.capitalized
+    )
 
     donor.refresh_from_db()
     assert donor.subscription == SubscriptionStatuses.ACTIVE.capitalized
@@ -280,7 +290,9 @@ def test_create_or_update_donor_resets_declines_for_inactive_subscription(
         count_declined=2,
     )
 
-    create_or_update_donor(payment_data, SubscriptionStatuses.INACTIVE.capitalized)  # noqa: E501
+    create_or_update_donor(
+        payment_data, SubscriptionStatuses.INACTIVE.capitalized
+    )
 
     donor.refresh_from_db()
     assert donor.subscription == SubscriptionStatuses.INACTIVE.capitalized

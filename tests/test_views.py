@@ -21,7 +21,10 @@ def test_contact_viewset_start_delegates_to_send_request():
     """Action start запускает exportContacts для указанного списка."""
     request = SimpleNamespace(data={"list_id": "5"})
 
-    with patch("api.views.send_request", return_value={"result": "ok"}) as send:  # noqa: E501
+    with patch(
+        "api.views.send_request",
+        return_value={"result": "ok"}
+    ) as send:
         response = ContactViewSet().start(request)
 
     assert response.status_code == status.HTTP_200_OK
@@ -46,7 +49,10 @@ def test_contact_viewset_get_contacts_post_imports_file():
         data={"result": {"file_to_download": "https://example.test/data.csv"}},
     )
 
-    with patch("api.views.add_contacts", return_value="Добавлено 1 контактов.") as add:  # noqa: E501
+    with patch(
+        "api.views.add_contacts",
+        return_value="Добавлено 1 контактов."
+    ) as add:
         response = ContactViewSet().get_contacts(request)
 
     assert response.status_code == status.HTTP_200_OK
@@ -59,7 +65,10 @@ def test_mixplat_viewset_payment_status_delegates_to_handler():
     request = SimpleNamespace(data={"payload": "value"})
     expected = Mock()
 
-    with patch("api.views.mixplat_request_handler", return_value=expected) as handler:  # noqa: E501
+    with patch(
+        "api.views.mixplat_request_handler",
+        return_value=expected
+    ) as handler:
         response = MixplatViewSet().payment_status(request)
 
     assert response is expected
@@ -86,7 +95,9 @@ def test_cloudpayments_viewset_create_cloudpayment_saves_valid_payment():
     }
 
     with patch("api.views.handling_cloudpayment_data", return_value=payload):
-        response = CloudPaymentsViewSet().create_cloudpayment(SimpleNamespace())  # noqa: E501
+        response = CloudPaymentsViewSet().create_cloudpayment(
+            SimpleNamespace()
+        )
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data == {"code": 0}
@@ -97,7 +108,9 @@ def test_cloudpayments_viewset_create_cloudpayment_saves_valid_payment():
 def test_cloudpayments_viewset_create_cloudpayment_returns_serializer_errors():
     """Невалидный payload CloudPayments возвращает ошибки сериализатора."""
     with patch("api.views.handling_cloudpayment_data", return_value={}):
-        response = CloudPaymentsViewSet().create_cloudpayment(SimpleNamespace())  # noqa: E501
+        response = CloudPaymentsViewSet().create_cloudpayment(
+            SimpleNamespace()
+        )
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "email" in response.data
@@ -125,13 +138,17 @@ def test_payments_list_view_returns_union_of_payments():
     cloudpayment_rows = [{"email": "cloud@example.com"}]
 
     with (
-        patch("api.views.MixPlat.objects.all", return_value=PaymentsQuery(mixplat_rows)),  # noqa: E501
+        patch(
+            "api.views.MixPlat.objects.all",
+            return_value=PaymentsQuery(mixplat_rows)),
         patch(
             "api.views.CloudPayment.objects.all",
             return_value=PaymentsQuery(cloudpayment_rows),
         ),
     ):
-        response = PaymentsListView.as_view()(RequestFactory().get("/payments/"))  # noqa: E501
+        response = PaymentsListView.as_view()(
+            RequestFactory().get("/payments/")
+        )
 
     assert response.status_code == HTTPStatus.OK
     assert b"mixplat@example.com" in response.content
