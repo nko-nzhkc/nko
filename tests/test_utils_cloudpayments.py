@@ -28,7 +28,10 @@ def test_check_donor_subscriptions_builds_basic_auth_and_returns_active(
     response = Mock()
     response.json.return_value = {"Model": [{"Id": 1}]}
 
-    with patch("api.utils.http_client.request", return_value=response) as request:  # noqa: E501
+    with patch(
+        "api.utils.http_client.request",
+        return_value=response
+    ) as request:
         result = check_donor_subscriptions(email)
 
     assert result == SubscriptionStatuses.ACTIVE.capitalized
@@ -60,7 +63,9 @@ def test_check_donor_subscriptions_returns_inactive_for_empty_model(
 
 @pytest.mark.django_db
 def test_handling_cloudpayment_data_maps_model_and_updates_donor(faker):
-    """Данные CloudPayments мапятся в сериализатор и передаются в donor flow."""  # noqa: E501
+    """Данные CloudPayments мапятся в сериализатор
+    и передаются в donor flow.
+    """
     email = faker.unique.email()
     request = SimpleNamespace(data={
         "Model": [{
@@ -130,8 +135,12 @@ def test_check_cloudpayments_connection_returns_true_on_success(settings):
     )
 
 
-@pytest.mark.parametrize("status_code", [HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN])  # noqa: E501
-def test_check_cloudpayments_connection_returns_false_for_bad_keys(status_code):  # noqa: E501
+@pytest.mark.parametrize(
+        "status_code", [HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN]
+        )
+def test_check_cloudpayments_connection_returns_false_for_bad_keys(
+        status_code,
+):
     """Ошибки авторизации CloudPayments означают невалидные ключи."""
     error = zapros.StatusCodeError(zapros.Response(status=status_code))
 

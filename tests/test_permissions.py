@@ -33,4 +33,6 @@ def test_is_admin_permission_branches(
     permission = IsAdmin()
 
     assert permission.has_permission(request, object()) is expected
-    assert permission.has_object_permission(request, object(), object()) is expected  # noqa: E501
+    assert permission.has_object_permission(
+        request, object(), object()
+        ) is expected
