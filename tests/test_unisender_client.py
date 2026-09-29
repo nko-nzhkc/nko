@@ -34,3 +34,20 @@ def test_send_contacts_to_unisender_delegates_to_api_request(client):
             "overwrite_lists": 1,
         },
     )
+
+
+def test_build_request_data_handles_dicts_and_none_values():
+    """Сборка form-data разворачивает dict и пропускает
+    None-значения payload.
+    """
+    client = Client(api_key="api-key", platform=None)
+
+    assert client._build_request_data({
+        "outer": {"inner": "value"},
+        "skipped": None,
+    }) == {
+        "api_key": "api-key",
+        "platform": None,
+        "format": "json",
+        "outer[inner]": "value",
+    }

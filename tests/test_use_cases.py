@@ -1,6 +1,6 @@
 """Тесты сценариев API."""
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -154,3 +154,16 @@ def test_execute_does_not_send_empty_selection(
     use_case.execute(donor_ids=[])
 
     api_request.assert_not_called()
+
+
+def test_execute_rejects_invalid_overwrite_lists():
+    """Сценарий не принимает значения overwrite_lists
+    вне протокола Unisender.
+    """
+    use_case = SyncDonorsToUnisenderUseCase(
+        repository=Mock(),
+        client=Mock(),
+    )
+
+    with pytest.raises(ValueError, match="overwrite_lists"):
+        use_case.execute(overwrite_lists=2)

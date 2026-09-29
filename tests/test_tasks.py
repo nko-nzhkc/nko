@@ -180,3 +180,11 @@ def test_import_failure_does_not_send_email(
             workflow.apply(throw=True)
 
     send_email.assert_not_called()
+
+
+def test_send_payment_email_task_delegates_to_utility():
+    """Celery task отправки письма делегирует работу api.utils."""
+    with patch("api.utils.send_payment_email") as send_email:
+        send_payment_email_task.run("donor@example.com", "5")
+
+    send_email.assert_called_once_with("donor@example.com", "5")
