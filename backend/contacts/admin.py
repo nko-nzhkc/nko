@@ -6,7 +6,7 @@ from donor_base.constants import EMPTY_VALUE
 
 
 @admin.register(Contact)
-class ContactAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
+class ContactAdmin(admin.ModelAdmin[Contact]):
     """Админ зона контактов."""
 
     list_display = ("username", "email", "subject", "comment")
@@ -15,7 +15,7 @@ class ContactAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
 
 
 @admin.register(Donor)
-class DonorAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
+class DonorAdmin(admin.ModelAdmin[Donor]):
     """Админ зона доноров."""
 
     list_display = ("email", "subscription", "count_declined")

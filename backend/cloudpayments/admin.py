@@ -6,7 +6,7 @@ from donor_base.constants import EMPTY_VALUE
 
 
 @admin.register(CloudPayment)
-class CloudPaymentAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
+class CloudPaymentAdmin(admin.ModelAdmin[CloudPayment]):
     """Админ зона пожертвований Cloudpayment."""
 
     list_display = (

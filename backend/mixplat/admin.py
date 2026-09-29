@@ -6,7 +6,7 @@ from mixplat.models import MixPlat
 
 
 @admin.register(MixPlat)
-class DonationAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
+class DonationAdmin(admin.ModelAdmin[MixPlat]):
     """Админ зона платежа Mixplat."""
 
     list_display = (

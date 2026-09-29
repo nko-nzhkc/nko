@@ -6,7 +6,7 @@ from forbiddenwords.models import ForbiddenWord
 
 
 @admin.register(ForbiddenWord)
-class ForbiddenWordAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
+class ForbiddenWordAdmin(admin.ModelAdmin[ForbiddenWord]):
     """Админ зона для запрещенных слов."""
 
     list_display = ("forbidden_word",)
