@@ -37,7 +37,9 @@ def test_send_contacts_to_unisender_delegates_to_api_request(client):
 
 
 def test_build_request_data_handles_dicts_and_none_values():
-    """Сборка form-data разворачивает dict и пропускает None-значения payload."""
+    """Сборка form-data разворачивает dict и пропускает
+    None-значения payload.
+    """
     client = Client(api_key="api-key", platform=None)
 
     assert client._build_request_data({

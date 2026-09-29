@@ -157,7 +157,9 @@ def test_execute_does_not_send_empty_selection(
 
 
 def test_execute_rejects_invalid_overwrite_lists():
-    """Сценарий не принимает значения overwrite_lists вне протокола Unisender."""
+    """Сценарий не принимает значения overwrite_lists
+    вне протокола Unisender.
+    """
     use_case = SyncDonorsToUnisenderUseCase(
         repository=Mock(),
         client=Mock(),
