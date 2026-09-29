@@ -2,12 +2,8 @@
 from http import HTTPMethod
 from typing import Any
 
-from cloudpayments.models import CloudPayment
-from contacts.models import Contact
 from django.http import HttpRequest, JsonResponse
 from django.views import View
-from forbiddenwords.models import ForbiddenWord
-from mixplat.models import MixPlat
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -23,6 +19,10 @@ from api.serializers import (
     MixPlatSerializer,
 )
 from api.unisender_service import add_contacts, send_request
+from cloudpayments.models import CloudPayment
+from contacts.models import Contact
+from forbiddenwords.models import ForbiddenWord
+from mixplat.models import MixPlat
 
 
 def _form_error_response() -> Response:

@@ -6,6 +6,8 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from faker import Faker
+
 from api.repositories import DonorRepository
 from api.use_cases import (
     UNISENDER_BATCH_SIZE,
@@ -16,7 +18,6 @@ from contacts.models import Donor
 from donor_base import di
 from donor_base.constants import SubscriptionStatuses
 from donor_base.subscriptions import get_group_by_capitalized
-from faker import Faker
 
 IMPORT_CONTACTS_METHOD = "import_contacts"
 FIELD_NAMES_KEY = "field_names"

@@ -1,7 +1,7 @@
 # Модуль базовой модели для всех пожертвований.
-from api.validators import forbidden_words_validator
 from django.db import models
 
+from api.validators import forbidden_words_validator
 from donor_base.constants import (
     DEFAULT_DONATION,
     MAX_CURRENCY_LENGTH,

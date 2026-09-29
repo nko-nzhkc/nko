@@ -5,19 +5,20 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import zapros
+from celery import chain
+from celery.app.task import Task
+from celery.exceptions import Retry
+from faker import Faker
+from rest_framework import status
+
 from api.tasks import (
     send_payment_email_task,
     send_users_to_unisender,
 )
 from api.use_cases import UNISENDER_FIELD_NAMES
-from celery import chain
-from celery.app.task import Task
-from celery.exceptions import Retry
 from contacts.models import Donor
 from donor_base.constants import SubscriptionStatuses
 from donor_base.subscriptions import get_group_by_capitalized
-from faker import Faker
-from rest_framework import status
 
 
 @pytest.fixture(autouse=True)

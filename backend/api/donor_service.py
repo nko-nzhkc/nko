@@ -4,9 +4,14 @@ import logging
 from functools import partial
 
 from celery import chain
-from contacts.models import Donor
 from django.db import transaction
 from django.db.models import F as FExpression
+
+from api.tasks import (
+    send_payment_email_task,
+    send_users_to_unisender,
+)
+from contacts.models import Donor
 from donor_base.constants import (
     BAD_PAYMENTS_COUNT,
     NEGATIVE_SUB_STAT,
@@ -14,11 +19,6 @@ from donor_base.constants import (
     SubscriptionStatuses,
 )
 from donor_base.subscriptions import get_group_by_capitalized
-
-from api.tasks import (
-    send_payment_email_task,
-    send_users_to_unisender,
-)
 
 logger = logging.getLogger(__name__)
 

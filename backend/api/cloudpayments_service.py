@@ -7,11 +7,11 @@ from typing import Any
 
 import zapros
 from django.conf import settings
-from donor_base import http_client
-from donor_base.constants import SubscriptionStatuses
 from rest_framework.request import Request
 
 from api.donor_service import create_or_update_donor
+from donor_base import http_client
+from donor_base.constants import SubscriptionStatuses
 
 logger = logging.getLogger(__name__)
 

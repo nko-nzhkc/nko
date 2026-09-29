@@ -7,8 +7,9 @@ import shutil
 from http import HTTPMethod, HTTPStatus
 from typing import Any
 
-from contacts.models import Donor
 from django.conf import settings
+
+from contacts.models import Donor
 from donor_base import http_client
 from donor_base.subscriptions import get_capitalized_by_group_id
 

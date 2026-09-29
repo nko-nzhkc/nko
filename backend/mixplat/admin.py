@@ -1,7 +1,7 @@
 # Модуль админки модели платежа Mixplat.
 from django.contrib import admin
-from donor_base.constants import EMPTY_VALUE
 
+from donor_base.constants import EMPTY_VALUE
 from mixplat.models import MixPlat
 
 

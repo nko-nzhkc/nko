@@ -1,10 +1,11 @@
 """Тесты репозиториев API."""
 
 import pytest
+from faker.proxy import Faker
+
 from api.repositories import DonorRepository
 from contacts.models import Donor
 from donor_base.constants import SubscriptionStatuses
-from faker.proxy import Faker
 
 
 @pytest.fixture

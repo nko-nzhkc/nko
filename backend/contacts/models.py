@@ -1,9 +1,10 @@
 # Модуль модели контактов.
 from typing import override
 
-from api.validators import forbidden_words_validator
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+from api.validators import forbidden_words_validator
 from donor_base.constants import (
     DEFAULT_DONATION,
     MAX_EMAIL_LENGTH,

@@ -1,7 +1,7 @@
 # Модуль админки запрещенных слов.
 from django.contrib import admin
-from donor_base.constants import EMPTY_VALUE
 
+from donor_base.constants import EMPTY_VALUE
 from forbiddenwords.models import ForbiddenWord
 
 

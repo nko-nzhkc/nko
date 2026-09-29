@@ -193,7 +193,7 @@ external = [ "WPS" ]
 flake8-gettext.extend-function-names = [ "_" ]
 flake8-quotes.inline-quotes = "double"
 
-isort.known-first-party = [ "server", "examples" ]
+isort.known-first-party = ["api", "contacts", "cloudpayments", "forbiddenwords", "mixplat", "donor_base"]
 mccabe.max-complexity = 6
 pydocstyle.convention = "google"
 

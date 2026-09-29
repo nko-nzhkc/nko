@@ -2,6 +2,7 @@
 from typing import override
 
 from django.db import models
+
 from donor_base.constants import MAX_FORBIDDEN_WORLD_LENGTH
 
 

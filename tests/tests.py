@@ -9,19 +9,20 @@ from urllib.parse import parse_qs, urlsplit
 import dishka
 import pytest
 import zapros
-from api.donor_service import ad_donor
-from api.unisender_service import send_payment_email, send_request
-from contacts.models import Donor
 from django.conf import settings
 from django.db import transaction
 from django.test import SimpleTestCase
+from faker import Faker
+from zapros.matchers import path
+from zapros.mock import Mock, MockMiddleware, MockRouter
+
+from api.donor_service import ad_donor
+from api.unisender_service import send_payment_email, send_request
+from contacts.models import Donor
 from donor_base import di
 from donor_base.constants import SubscriptionStatuses
 from donor_base.subscriptions import get_group_by_capitalized
 from donor_base.unisender_client import Client
-from faker import Faker
-from zapros.matchers import path
-from zapros.mock import Mock, MockMiddleware, MockRouter
 
 CONTACT_FIELDS = ("email", "email_list_ids")
 
