@@ -487,7 +487,7 @@ version = "6.1.1"
 description = "Monkey-patching and extensions for django-stubs"
 optional = false
 python-versions = ">=3.11"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "django_stubs_ext-6.1.1-py3-none-any.whl", hash = "sha256:64aebb7ce2c327a4a2b75207d67034e879fd7edf027c93487be69da363dc79fa"},
     {file = "django_stubs_ext-6.1.1.tar.gz", hash = "sha256:c35263135558d4c5d12b69e1f4c98632bf59bc3ab5118f7d4882d12800e3a7dd"},
@@ -1460,4 +1460,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<3.14"
-content-hash = "937bac378c44bcbe5736726e5dfea500839aa05d02a3ec6f754c94c675bdc7de"
+content-hash = "2cda8a25430f74e40e31fc287fc2b8420378765cb202bfa6eea247ef9f629dc2"
