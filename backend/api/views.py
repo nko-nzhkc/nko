@@ -1,5 +1,5 @@
 # Модуль представлений проекта.
-from rest_framework import status, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -82,13 +82,14 @@ class CloudPaymentsViewSet(viewsets.GenericViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class PaymentsListViewSet(viewsets.GenericViewSet):
+class PaymentsListViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """Список всех платежей (Mixplat + CloudPayments)."""
 
-    def list(self, request, *args, **kwargs):
-        payments = (
+    serializer_class = CloudpaymentsSerializer
+
+    def get_queryset(self):
+        return (
             MixPlat.objects.all()
             .union(CloudPayment.objects.all())
             .order_by("-pub_date")
         )
-        return Response({"payments_list": list(payments.values())})
