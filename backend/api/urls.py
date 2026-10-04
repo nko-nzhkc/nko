@@ -7,12 +7,12 @@ from .views import (
     ForbiddenwordViewSet,
     CloudPaymentsViewSet,
     MixplatViewSet,
-    PaymentsListView,
+    PaymentsListViewSet,
 )
 
 app_name = "api"
 
-router_v1 = routers.DefaultRouter()
+router_v1 = routers.SimpleRouter()
 router_v1.register("contacts", ContactViewSet, basename="contacts")
 router_v1.register(
     "forbiddenwords", ForbiddenwordViewSet, basename="forbiddenwords"
@@ -21,8 +21,8 @@ router_v1.register(
     "cloudpayments", CloudPaymentsViewSet, basename="cloudpayments"
 )
 router_v1.register("mixplat", MixplatViewSet, basename="mixplat")
+router_v1.register("payments", PaymentsListViewSet, basename="payments")
 
 urlpatterns = [
     path("", include(router_v1.urls)),
-    path("payments/", PaymentsListView.as_view(), name="payments_list"),
 ]

@@ -13,7 +13,7 @@ C{POST c JSON платежа на URL, указанный в личном каб
 D(Nginx) --> |Проксирует на http://backend:8000/api/...| E 
 
 E(Django)
-E --> |MixPlat| E1("`MixplatViewSet вызывает payment_status.<br>**NB: ModelViewSet**`")
+E --> |MixPlat| E1("`MixplatViewSet вызывает payment_status.<br>**NB: GenericViewSet**`")
     E1 --> E1a(Payment_status вызывает mixplat_request_handler)
     E1a --> |Внутри mixplat_request_handler ЛОКАЛЬНО оценивается recurrent_id из request.data| F
 
