@@ -1,29 +1,49 @@
 # Модуль представлений проекта.
-from rest_framework import mixins, status, viewsets
+from http import HTTPMethod
+from typing import Any
+
+from django.http import HttpRequest, JsonResponse
+from django.views import View
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from .mixins import ViewListCreateMixinsSet
-from .serializers import (
-    ForbiddenwordSerializer,
+from api.cloudpayments_service import handling_cloudpayment_data
+from api.mixins import ViewListCreateMixinsSet
+from api.mixplat_service import mixplat_request_handler
+from api.serializers import (
     CloudpaymentsSerializer,
+    ContactSerializer,
+    ForbiddenwordSerializer,
+    MixPlatSerializer,
 )
-from .utils import (
-    add_contacts,
-    handling_cloudpayment_data,
-    mixplat_request_handler,
-    send_request,
-)
+from api.unisender_service import add_contacts, send_request
+from cloudpayments.models import CloudPayment
+from contacts.models import Contact
 from forbiddenwords.models import ForbiddenWord
 from mixplat.models import MixPlat
 
 
-class ContactViewSet(viewsets.GenericViewSet):
+def _form_error_response() -> Response:
+    return Response(
+        {"error": "Invalid payload"},
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+
+
+class ContactViewSet(viewsets.ModelViewSet[Contact]):
     """Вьюсет контактов."""
 
-    @action(detail=False, url_path="start", methods=("post",))
-    def start(self, request):
+    queryset = Contact.objects.all()
+    serializer_class = ContactSerializer
+
+    @action(
+        detail=False,
+        url_path="start",
+        methods=(HTTPMethod.POST.value,),
+    )
+    def start(self, request: Request) -> Response:
         """Запуск процесса получения контактов из Unisender."""
         data = request.data
         if not isinstance(data, dict):
@@ -70,20 +90,31 @@ class ForbiddenwordViewSet(ViewListCreateMixinsSet[ForbiddenWord]):
     pagination_class = None
 
 
-class MixplatViewSet(viewsets.GenericViewSet):
+class MixplatViewSet(viewsets.ModelViewSet[Any]):
     """Вьюсет Mixplat."""
 
-    @action(detail=False, url_path="payment_status", methods=("post",))
-    def payment_status(self, request):
+    queryset = MixPlat.objects.all()
+    serializer_class = MixPlatSerializer
+
+    @action(
+        detail=False,
+        url_path="payment_status",
+        methods=(HTTPMethod.POST.value,),
+    )
+    def payment_status(self, request: Request) -> Response:
         """Метод получения данных от Mixplat."""
         return mixplat_request_handler(request)
 
 
-class CloudPaymentsViewSet(viewsets.GenericViewSet):
+class CloudPaymentsViewSet(viewsets.GenericViewSet[CloudPayment]):
     """Вьюсет для Cloudpayment."""
 
-    @action(detail=False, url_path="create_cloudpayment", methods=["post"])
-    def create_cloudpayment(self, request):
+    @action(
+        detail=False,
+        url_path="create_cloudpayment",
+        methods=(HTTPMethod.POST.value,),
+    )
+    def create_cloudpayment(self, request: Request) -> Response:
         """Создание экземпляра Cloudpayment."""
         serializer = CloudpaymentsSerializer(
             data=handling_cloudpayment_data(request),
@@ -94,14 +125,24 @@ class CloudPaymentsViewSet(viewsets.GenericViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class PaymentsListViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    """Список всех платежей (Mixplat + CloudPayments)."""
+class PaymentsListView(View):
+    """Вью для всех платежей."""
 
-    serializer_class = CloudpaymentsSerializer
+    model = None
 
-    def get_queryset(self):
-        return (
-            MixPlat.objects.all()
-            .union(CloudPayment.objects.all())
-            .order_by("-pub_date")
-        )
+    def get(
+        self,
+        request: HttpRequest,
+        *args: Any,
+        **kwargs: Any,
+    ) -> JsonResponse:
+        """Обрабатывает GET-запрос для получения списка всех платежей."""
+        mixplat_payments = MixPlat.objects.all()
+        cloudpayment_payments = CloudPayment.objects.all()
+
+        all_payments_list = mixplat_payments.union(cloudpayment_payments)
+        all_payments_list = all_payments_list.order_by("-pub_date")
+
+        payments_data = list(all_payments_list.values())
+
+        return JsonResponse({"payments_list": payments_data})

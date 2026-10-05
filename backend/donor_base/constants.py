@@ -16,7 +16,7 @@ class SubscriptionStatuses(Enum):
     Формат:
     name = (verbosed, capitalized, group_id)
 
-    verbosed:    русская расшифровка статуса
+    value:       русская расшифровка статуса
     capitalized: name в формате записи capitilized
     group_id:    ид группы.
     """
