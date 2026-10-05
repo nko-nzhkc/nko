@@ -1,5 +1,6 @@
 # Модуль представлений проекта.
 from http import HTTPMethod
+from typing import override
 
 from django.db.models import QuerySet
 from rest_framework import mixins, status, viewsets
@@ -114,10 +115,12 @@ class PaymentsListViewSet(
 
     serializer_class = CloudpaymentsSerializer
 
+    @override
     def get_queryset(self) -> QuerySet[CloudPayment]:
         """Объединённый список платежей Mixplat и CloudPayments."""
         return (
-            CloudPayment.objects.all()
+            CloudPayment.objects
+            .all()
             .union(MixPlat.objects.all())
             .order_by("-pub_date")
         )
