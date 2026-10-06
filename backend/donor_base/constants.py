@@ -3,7 +3,7 @@ from typing import Self
 
 
 class FailedPaymentStatuses(Enum):
-    """Класс статусов не прошедших платежей."""
+    """Класс статусов непрошедших платежей."""
 
     CANCELLED = "Cancelled"
     DECLINED = "Declined"
@@ -73,3 +73,8 @@ MAX_PAYMENT_ID_LENGTH = 100
 MAX_PAYMENT_STATUS_LENGTH = 100
 
 BAD_PAYMENTS_COUNT = 3
+
+UNISENDER_EXPECTED_FIELDNAMES = {
+    "email",
+    "email_status"
+}

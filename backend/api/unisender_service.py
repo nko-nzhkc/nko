@@ -1,9 +1,10 @@
 """Модуль бизнес логики Unisender."""
 
-import csv
 import logging
 import pathlib
 import shutil
+from collections import Counter
+from csv import DictReader
 from http import HTTPMethod, HTTPStatus
 from typing import Any
 
@@ -11,7 +12,9 @@ from django.conf import settings
 
 from contacts.models import Donor
 from donor_base import http_client
+from donor_base.constants import UNISENDER_EXPECTED_FIELDNAMES
 from donor_base.subscriptions import get_capitalized_by_group_id
+
 
 logger = logging.getLogger(__name__)
 
@@ -99,19 +102,73 @@ def _save_file_from_url(file_url: str, file_path: pathlib.Path) -> str | None:
     return None
 
 
+def _get_new_emails(emails: list) -> set:
+    """Формирует недублированный список email по данным БД.
+
+    По списку email из файла от Юнисендера получаем список совпадающих.
+    Отдаем разницу между изначальным списком и существующим.
+    """
+    existing_emails = set(
+        Donor.objects.filter(email__in=emails).values_list(
+            "email", flat=True,
+        ),
+    )
+    return set(emails) - existing_emails
+
+
+def _income_has_duplicates(emails: list) -> bool:
+    """Проверяет наличие дублей email в файле от Юнисендера."""
+    counts = Counter(emails)
+    duplicates = {e for e, c in counts.items() if c > 1}
+    if duplicates:
+        logger.warning(
+            "В исходном файле обнаружены дубли email: %s", duplicates,
+        )
+        return True
+    return False
+
+
+def _expected_columns_missing(fieldnames: list[str] | None) -> bool:
+    if not fieldnames:
+        logger.warning(
+            "В исходном файле не обнаружены заголовки.",
+        )
+        return True
+
+    missing_fieldnames = UNISENDER_EXPECTED_FIELDNAMES - set(fieldnames)
+    if missing_fieldnames:
+        logger.warning(
+            "В исходном файле отсутствуют ожидаемые поля: %s",
+            missing_fieldnames,
+        )
+    return bool(missing_fieldnames)
+
+
 def _build_bulk_list(file_path: pathlib.Path) -> list[Donor]:
     """Формирует список новых доноров из CSV-файла."""
     with file_path.open(encoding="utf-8") as csv_file:
+        reader = DictReader(csv_file, delimiter=",")
+        if _expected_columns_missing(reader.fieldnames):
+            raise ValueError(
+                "Ошибка при обработке исходного файла: "
+                "шапка не соответствует ожидаемой.",
+            )
+        rows = list(reader)
+        emails = [row["email"] for row in rows]
+
+        if _income_has_duplicates(emails):
+            raise ValueError(
+                "Ошибка при обработке исходного файла: дубли email.",
+            )
+        emails = _get_new_emails(emails)
+
         return [
             Donor(
-                email=row[0],
-                subscription=get_capitalized_by_group_id(row[1]),
+                email=row["email"],
+                subscription=get_capitalized_by_group_id(row["email_status"]),
             )
-            for row in csv.reader(csv_file, delimiter=",")
-            if (
-                row[0] != "email"
-                and not Donor.objects.filter(email=row[0]).exists()
-            )
+            for row in rows
+            if row["email"] in emails
         ]
 
 
