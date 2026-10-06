@@ -138,9 +138,9 @@ def _expected_columns_missing(fieldnames: list[str] | None) -> bool:
         )
         return True
 
-    missing_fieldnames = (
-        {field.value for field in UnisenderExpectedFilenames} - set(fieldnames)
-    )
+    missing_fieldnames = {
+        field.value for field in UnisenderExpectedFilenames
+        } - set(fieldnames)
     if missing_fieldnames:
         logger.warning(
             "В исходном файле отсутствуют ожидаемые поля: %s",
