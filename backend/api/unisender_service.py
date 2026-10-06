@@ -110,7 +110,8 @@ def _get_new_emails(emails: list) -> set:
     """
     existing_emails = set(
         Donor.objects.filter(email__in=emails).values_list(
-            "email", flat=True,
+            "email",
+            flat=True,
         ),
     )
     return set(emails) - existing_emails
@@ -122,7 +123,8 @@ def _income_has_duplicates(emails: list) -> bool:
     duplicates = {e for e, c in counts.items() if c > 1}
     if duplicates:
         logger.warning(
-            "В исходном файле обнаружены дубли email: %s", duplicates,
+            "В исходном файле обнаружены дубли email: %s",
+            duplicates,
         )
         return True
     return False
