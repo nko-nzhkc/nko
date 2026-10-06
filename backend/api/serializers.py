@@ -5,7 +5,7 @@ from cloudpayments.models import CloudPayment
 from forbiddenwords.models import ForbiddenWord
 
 
-class ForbiddenwordSerializer(serializers.ModelSerializer):
+class ForbiddenwordSerializer(serializers.ModelSerializer[ForbiddenWord]):
     """Сериализатор запрещенных слов."""
 
     class Meta:
@@ -13,10 +13,8 @@ class ForbiddenwordSerializer(serializers.ModelSerializer):
         fields = ("forbidden_word",)
 
 
-class CloudpaymentsSerializer(serializers.ModelSerializer):
-    """
-    Сериализатор для модели CloudPayment.
-    """
+class CloudpaymentsSerializer(serializers.ModelSerializer[CloudPayment]):
+    """Сериализатор для модели CloudPayment."""
 
     class Meta:
         model = CloudPayment
