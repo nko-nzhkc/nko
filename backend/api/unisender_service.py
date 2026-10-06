@@ -12,7 +12,7 @@ from django.conf import settings
 
 from contacts.models import Donor
 from donor_base import http_client
-from donor_base.constants import UNISENDER_EXPECTED_FIELDNAMES
+from donor_base.constants import UnisenderExpectedFilenames
 from donor_base.subscriptions import get_capitalized_by_group_id
 
 
@@ -120,7 +120,7 @@ def _get_new_emails(emails: list) -> set:
 def _income_has_duplicates(emails: list) -> bool:
     """Проверяет наличие дублей email в файле от Юнисендера."""
     counts = Counter(emails)
-    duplicates = {e for e, c in counts.items() if c > 1}
+    duplicates = {email for email, count in counts.items() if count > 1}
     if duplicates:
         logger.warning(
             "В исходном файле обнаружены дубли email: %s",
@@ -131,13 +131,16 @@ def _income_has_duplicates(emails: list) -> bool:
 
 
 def _expected_columns_missing(fieldnames: list[str] | None) -> bool:
+    """Проверяет шапку файла от Юнисендера."""
     if not fieldnames:
         logger.warning(
             "В исходном файле не обнаружены заголовки.",
         )
         return True
 
-    missing_fieldnames = UNISENDER_EXPECTED_FIELDNAMES - set(fieldnames)
+    missing_fieldnames = (
+        {field.value for field in UnisenderExpectedFilenames} - set(fieldnames)
+    )
     if missing_fieldnames:
         logger.warning(
             "В исходном файле отсутствуют ожидаемые поля: %s",
@@ -156,7 +159,7 @@ def _build_bulk_list(file_path: pathlib.Path) -> list[Donor]:
                 "шапка не соответствует ожидаемой.",
             )
         rows = list(reader)
-        emails = [row["email"] for row in rows]
+        emails = [row[UnisenderExpectedFilenames.EMAIL] for row in rows]
 
         if _income_has_duplicates(emails):
             raise ValueError(
@@ -166,11 +169,13 @@ def _build_bulk_list(file_path: pathlib.Path) -> list[Donor]:
 
         return [
             Donor(
-                email=row["email"],
-                subscription=get_capitalized_by_group_id(row["email_status"]),
+                email=row[UnisenderExpectedFilenames.EMAIL],
+                subscription=get_capitalized_by_group_id(
+                    row[UnisenderExpectedFilenames.EMAIL_STATUS],
+                ),
             )
             for row in rows
-            if row["email"] in emails
+            if row[UnisenderExpectedFilenames.EMAIL] in emails
         ]
 
 

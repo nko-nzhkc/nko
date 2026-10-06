@@ -2,6 +2,13 @@ from enum import Enum
 from typing import Self
 
 
+class UnisenderExpectedFilenames(Enum):
+    """Класс ожидаемых наименований колонок файла Юнисендера."""
+
+    EMAIL = "email"
+    EMAIL_STATUS = "email_status"
+
+
 class FailedPaymentStatuses(Enum):
     """Класс статусов непрошедших платежей."""
 
@@ -73,8 +80,3 @@ MAX_PAYMENT_ID_LENGTH = 100
 MAX_PAYMENT_STATUS_LENGTH = 100
 
 BAD_PAYMENTS_COUNT = 3
-
-UNISENDER_EXPECTED_FIELDNAMES = {
-    "email",
-    "email_status"
-}
