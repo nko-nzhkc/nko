@@ -170,7 +170,7 @@ def _build_bulk_list(file_path: pathlib.Path) -> list[Donor]:
 
         return [
             Donor(
-                email=row[UnisenderExpectedFilenames.EMAIL],
+                email=row[UnisenderExpectedFilenames.EMAIL.value],
                 subscription=get_capitalized_by_group_id(
                     row[UnisenderExpectedFilenames.EMAIL_STATUS],
                 ),
