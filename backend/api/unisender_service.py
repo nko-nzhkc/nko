@@ -102,7 +102,7 @@ def _save_file_from_url(file_url: str, file_path: pathlib.Path) -> str | None:
     return None
 
 
-def _get_new_emails(emails: list) -> set:
+def _get_new_emails(emails: list[str]) -> set[str]:
     """Формирует недублированный список email по данным БД.
 
     По списку email из файла от Юнисендера получаем список совпадающих.
@@ -117,7 +117,7 @@ def _get_new_emails(emails: list) -> set:
     return set(emails) - existing_emails
 
 
-def _income_has_duplicates(emails: list) -> bool:
+def _has_duplicate_emails(emails: list[str]) -> bool:
     """Проверяет наличие дублей email в файле от Юнисендера."""
     counts = Counter(emails)
     duplicates = {email for email, count in counts.items() if count > 1}
@@ -130,7 +130,7 @@ def _income_has_duplicates(emails: list) -> bool:
     return False
 
 
-def _expected_columns_missing(fieldnames: list[str] | None) -> bool:
+def _has_missing_columns(fieldnames: list[str] | None) -> bool:
     """Проверяет шапку файла от Юнисендера."""
     if not fieldnames:
         logger.warning(
@@ -154,15 +154,15 @@ def _build_bulk_list(file_path: pathlib.Path) -> list[Donor]:
     """Формирует список новых доноров из CSV-файла."""
     with file_path.open(encoding="utf-8") as csv_file:
         reader = DictReader(csv_file, delimiter=",")
-        if _expected_columns_missing(reader.fieldnames):
+        if _has_missing_columns(reader.fieldnames):
             raise ValueError(
                 "Ошибка при обработке исходного файла: "
                 "шапка не соответствует ожидаемой.",
             )
         rows = list(reader)
-        emails = [row[UnisenderExpectedFilenames.EMAIL] for row in rows]
+        emails = [row[UnisenderExpectedFilenames.EMAIL.value] for row in rows]
 
-        if _income_has_duplicates(emails):
+        if _has_duplicate_emails(emails):
             raise ValueError(
                 "Ошибка при обработке исходного файла: дубли email.",
             )
@@ -170,13 +170,13 @@ def _build_bulk_list(file_path: pathlib.Path) -> list[Donor]:
 
         return [
             Donor(
-                email=row[UnisenderExpectedFilenames.EMAIL],
+                email=row[UnisenderExpectedFilenames.EMAIL.value],
                 subscription=get_capitalized_by_group_id(
-                    row[UnisenderExpectedFilenames.EMAIL_STATUS],
+                    row[UnisenderExpectedFilenames.EMAIL_STATUS.value],
                 ),
             )
             for row in rows
-            if row[UnisenderExpectedFilenames.EMAIL] in emails
+            if row[UnisenderExpectedFilenames.EMAIL.value] in emails
         ]
 
 
