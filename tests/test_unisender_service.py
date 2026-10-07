@@ -22,48 +22,78 @@ from donor_base.constants import (
 
 # ================= _has_missing_columns ==================
 
-@pytest.mark.parametrize(
-    ("fieldnames", "expected"),
-    [
-        (None, True),
-        ([], True),
-        (
-            [
-                UnisenderExpectedFilenames.EMAIL.value,
-                UnisenderExpectedFilenames.EMAIL_STATUS.value],
-            False,
-        ),
-        ([UnisenderExpectedFilenames.EMAIL.value], True),
-        ([UnisenderExpectedFilenames.EMAIL_STATUS.value], True),
-        (["someth1ng", "w1ld"], True),
-    ],
-)
-def test_has_missing_columns(
-    fieldnames: list[str] | None,
-    expected: bool,
-) -> None:
-    """Тест проверки шапки файла Юнисендера."""
-    assert _has_missing_columns(fieldnames) is expected
+def test_has_missing_columns_none() -> None:
+    """Тест на отсутствие колонок - None."""
+    assert _has_missing_columns(None) is True
+
+
+def test_has_missing_columns_empty_list() -> None:
+    """Тест на отсутствие колонок - пустой лист."""
+    assert _has_missing_columns([]) is True
+
+
+def test_has_missing_columns_all_present() -> None:
+    """Тест на совпадение шапки с ожидаемым."""
+    assert _has_missing_columns([
+        UnisenderExpectedFilenames.EMAIL.value,
+        UnisenderExpectedFilenames.EMAIL_STATUS.value,
+    ]) is False
+
+
+def test_has_missing_columns_only_email() -> None:
+    """Тест на отсутствие колонки статуса."""
+    assert _has_missing_columns([
+        UnisenderExpectedFilenames.EMAIL.value,
+    ]) is True
+
+
+def test_has_missing_columns_only_email_status() -> None:
+    """Тест на отсутствие колонки адреса."""
+    assert _has_missing_columns([
+        UnisenderExpectedFilenames.EMAIL_STATUS.value,
+    ]) is True
+
+
+def test_has_missing_columns_wrong_columns() -> None:
+    """Тест на несовпадающие с ожидаемыми колонки."""
+    assert _has_missing_columns(["someth1ng", "w1ld"]) is True
 
 
 # ================= _hes_duplicate_emails =================
 
-@pytest.mark.parametrize(
-    ("emails", "expected"),
-    [
-        ([], False),
-        (["a_@mail.ru"], False),
-        (["a_@mail.ru", "b_@mail.ru"], False),
-        (["a_@mail.ru", "a_@mail.ru"], True),
-        (["a_@mail.ru", "b_@mail.ru", "a_@mail.ru"], True),
-    ],
-)
-def test_hes_duplicate_emails(
-    emails: list[str],
-    expected: bool,
-) -> None:
-    """Тест проверки дублей по email в файле Юнисендера."""
-    assert _has_duplicate_emails(emails) is expected
+def test_has_duplicate_emails_empty_list() -> None:
+    """Тест на пустой лист."""
+    assert _has_duplicate_emails([]) is False
+
+
+def test_has_duplicate_emails_single_email() -> None:
+    """Тест на один адрес."""
+    assert _has_duplicate_emails(["a_@mail.ru"]) is False
+
+
+def test_has_duplicate_emails_unique_emails() -> None:
+    """Тест на несколько адресов без дублей."""
+    assert _has_duplicate_emails([
+        "a_@mail.ru",
+        "b_@mail.ru",
+    ]) is False
+
+
+def test_has_duplicate_emails_two_same() -> None:
+    """Тест на несколько адресов с дублями."""
+    assert _has_duplicate_emails([
+        "a_@mail.ru",
+        "a_@mail.ru",
+    ]) is True
+
+
+def test_has_duplicate_emails_three_with_duplicate() -> None:
+    """Тест на несколько адресов с дублями и без."""
+    assert _has_duplicate_emails([
+        "a_@mail.ru",
+        "b_@mail.ru",
+        "a_@mail.ru",
+    ]) is True
 
 
 # ==================== _get_new_emails ====================
