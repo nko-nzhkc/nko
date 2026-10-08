@@ -9,14 +9,28 @@ from donor_base.subscriptions import (
 )
 
 
-def test_subscription_helpers_return_values_and_raise_for_unknown_group():
-    """Кэшированные словари подписок работают для валидных и неизвестных id."""
-    assert get_capitalized_by_group_id(
-        SubscriptionStatuses.ACTIVE.group_id
-    ) == SubscriptionStatuses.ACTIVE.capitalized
-    assert get_group_by_capitalized(
-        SubscriptionStatuses.LOST.capitalized
-    ) == SubscriptionStatuses.LOST.group_id
+@pytest.mark.parametrize(
+    "subscription",
+    list(SubscriptionStatuses),
+)
+def test_subscription_helpers_map_known_values(
+    subscription: SubscriptionStatuses,
+) -> None:
+    """Преобразования статуса и group ID взаимно обратны."""
+    assert (
+        get_capitalized_by_group_id(subscription.group_id)
+        == subscription.capitalized
+    )
+    assert (
+        get_group_by_capitalized(subscription.capitalized)
+        == subscription.group_id
+    )
 
+
+def test_subscription_helpers_raise_for_unknown_values() -> None:
+    """Оба helper-а отклоняют неизвестные значения."""
     with pytest.raises(ValueError, match="Не удалось найти значение"):
         get_capitalized_by_group_id("unknown")
+
+    with pytest.raises(ValueError, match="Не удалось найти значение"):
+        get_group_by_capitalized("unknown")
