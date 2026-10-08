@@ -1,4 +1,3 @@
-
 """Тест передачи письма через Celery task и Unisender service."""
 
 from collections.abc import Callable

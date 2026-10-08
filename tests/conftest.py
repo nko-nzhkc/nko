@@ -67,10 +67,9 @@ def route_zapros_response(
             raise ValueError(f"URL должен содержать hostname: {url}")
 
         route = (
-            Mock.given(
-                path(parsed_url.path)
-                .method(method)
-                .host(parsed_url.hostname),
+            Mock
+            .given(
+                path(parsed_url.path).method(method).host(parsed_url.hostname),
             )
             .respond(response)
             .once()
@@ -93,10 +92,7 @@ def parse_zapros_form() -> Callable[[zapros.Request], dict[str, str]]:
             request.body.decode("utf-8"),
             keep_blank_values=True,
         )
-        return {
-            key: values[0]
-            for key, values in fields.items()
-        }
+        return {key: values[0] for key, values in fields.items()}
 
     return parse_form
 

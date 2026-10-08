@@ -25,9 +25,7 @@ from contacts.models import Donor
 from donor_base.constants import SubscriptionStatuses
 
 CLOUDPAYMENTS_TEST_URL = "https://cloudpayments.test/test"
-CLOUDPAYMENTS_FIND_URL = (
-    "https://api.cloudpayments.example/subscriptions/find"
-)
+CLOUDPAYMENTS_FIND_URL = "https://api.cloudpayments.example/subscriptions/find"
 TEST_PUBLIC_ID = "test-public-id"
 TEST_CREDENTIAL = "test-api-secret"
 TEST_EMAIL = "donor@example.org"
