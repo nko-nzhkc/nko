@@ -98,9 +98,9 @@ def test_contact_callback_imports_only_new_donors(
         Mock,
     ],
 ) -> None:
-    """POST callback скачивает CSV,
-    
-    пропускает дубликат и импортирует нового.
+    """POST callback скачивает CSV.
+
+    Пропускает дубликат и импортирует нового.
     """
     monkeypatch.chdir(tmp_path)
     existing_email = faker.unique.email()
