@@ -26,9 +26,18 @@ jobs:
         run: |
           poetry install
 
+      - name: Test with ruff
+        run: |
+          poetry run ruff check backend/ tests/
+          poetry run ruff format --check backend/ tests/
+
       - name: Test with flake8
         run: |
           poetry run flake8 --exclude=*/migrations/* backend/ tests/
+
+      - name: Type check with mypy
+        run: |
+          poetry run mypy backend/ tests/
 
       - name: Check migrations
         run: |
