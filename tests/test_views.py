@@ -99,6 +99,7 @@ def test_contact_callback_imports_only_new_donors(
     ],
 ) -> None:
     """POST callback скачивает CSV,
+    
     пропускает дубликат и импортирует нового.
     """
     monkeypatch.chdir(tmp_path)
