@@ -1,17 +1,18 @@
+
 """Тест передачи письма через Celery task и Unisender service."""
 
 from collections.abc import Callable
 from http import HTTPMethod
-from typing import Any
 
 import zapros
+from pytest_django import Settings
 from zapros.mock import Mock
 
 from api.tasks import send_payment_email_task
 
 
 def test_email_task_delegates_to_unisender_service(
-    settings: Any,
+    settings: Settings,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
         Mock,

@@ -8,6 +8,7 @@ import pytest
 import zapros
 from django.utils import timezone
 from faker import Faker
+from pytest_django import Settings
 from rest_framework.test import APIClient
 from zapros.mock import Mock
 
@@ -19,7 +20,7 @@ from mixplat.models import MixPlat
 
 def test_contact_start_sends_export_request(
     api_client: APIClient,
-    settings: Any,
+    settings: Settings,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
         Mock,
@@ -76,8 +77,9 @@ def test_contact_get_contacts_get_returns_empty_ok(
     ],
 )
 def test_contact_post_actions_reject_non_object_payload(
-    url: str,
     api_client: APIClient,
+    *,
+    url: str,
 ) -> None:
     """POST actions отклоняют JSON-массив вместо объекта."""
     response = api_client.post(url, data=[], format="json")

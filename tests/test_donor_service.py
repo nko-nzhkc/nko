@@ -16,6 +16,13 @@ from donor_base.constants import (
 )
 
 
+pytestmark = pytest.mark.usefixtures(
+    "sync_task",
+    "email_task",
+    "chain_factory",
+)
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     ("subscription", "sends_email"),
@@ -25,15 +32,16 @@ from donor_base.constants import (
     ],
 )
 def test_new_donor_is_created_with_payment_subscription(
-    subscription: str,
-    *,
-    sends_email: bool,
     faker: Faker,
-    donor_workflow: tuple[MagicMock, MagicMock, MagicMock],
     django_capture_on_commit_callbacks: Any,
+    sync_task: MagicMock,
+    email_task: MagicMock,
+    chain_factory: MagicMock,
+    *,
+    subscription: str,
+    sends_email: bool,
 ) -> None:
     """Новый донор создаётся с переданным статусом подписки."""
-    sync_task, email_task, chain_factory = donor_workflow
     email = faker.unique.email()
 
     with django_capture_on_commit_callbacks(execute=True):
@@ -65,10 +73,11 @@ def test_new_donor_is_created_with_payment_subscription(
 @pytest.mark.django_db
 def test_new_lost_donor_is_not_created(
     faker: Faker,
-    donor_workflow: tuple[MagicMock, MagicMock, MagicMock],
+    sync_task: MagicMock,
+    email_task: MagicMock,
+    chain_factory: MagicMock,
 ) -> None:
     """Новый донор не создаётся сразу со статусом Lost."""
-    sync_task, email_task, chain_factory = donor_workflow
     email = faker.unique.email()
 
     create_or_update_donor(
@@ -86,7 +95,6 @@ def test_new_lost_donor_is_not_created(
 @pytest.mark.django_db
 def test_failed_payment_increments_active_donor_count(
     make_donor: Callable[..., Donor],
-    donor_workflow: tuple[MagicMock, MagicMock, MagicMock],
 ) -> None:
     """Неудачный платёж до порога увеличивает счётчик отказов."""
     donor = make_donor(
@@ -108,11 +116,10 @@ def test_failed_payment_increments_active_donor_count(
 @pytest.mark.django_db
 def test_third_failed_payment_marks_active_donor_lost(
     make_donor: Callable[..., Donor],
-    donor_workflow: tuple[MagicMock, MagicMock, MagicMock],
+    sync_task: MagicMock,
     django_capture_on_commit_callbacks: Any,
 ) -> None:
     """Третий отказ переводит Active-донора в Lost."""
-    sync_task, _, _ = donor_workflow
     donor = make_donor(
         subscription=SubscriptionStatuses.ACTIVE.capitalized,
         count_declined=BAD_PAYMENTS_COUNT - 1,
@@ -137,7 +144,6 @@ def test_third_failed_payment_marks_active_donor_lost(
 @pytest.mark.django_db
 def test_failed_payment_does_not_change_inactive_donor(
     make_donor: Callable[..., Donor],
-    donor_workflow: tuple[MagicMock, MagicMock, MagicMock],
 ) -> None:
     """Отказ платежа не меняет счётчик Inactive-донора."""
     donor = make_donor(
@@ -159,11 +165,12 @@ def test_failed_payment_does_not_change_inactive_donor(
 @pytest.mark.django_db
 def test_successful_payment_reactivates_lost_donor(
     make_donor: Callable[..., Donor],
-    donor_workflow: tuple[MagicMock, MagicMock, MagicMock],
+    sync_task: MagicMock,
+    email_task: MagicMock,
+    chain_factory: MagicMock,
     django_capture_on_commit_callbacks: Any,
 ) -> None:
     """Успешный платёж активирует существующего Lost-донора."""
-    sync_task, email_task, chain_factory = donor_workflow
     donor = make_donor(
         subscription=SubscriptionStatuses.LOST.capitalized,
         count_declined=2,
@@ -193,7 +200,6 @@ def test_successful_payment_reactivates_lost_donor(
 @pytest.mark.django_db
 def test_successful_payment_resets_active_donor_count(
     make_donor: Callable[..., Donor],
-    donor_workflow: tuple[MagicMock, MagicMock, MagicMock],
 ) -> None:
     """Успешный платёж сбрасывает счётчик Active-донора."""
     donor = make_donor(
@@ -215,7 +221,6 @@ def test_successful_payment_resets_active_donor_count(
 @pytest.mark.django_db
 def test_successful_payment_resets_inactive_donor_count(
     make_donor: Callable[..., Donor],
-    donor_workflow: tuple[MagicMock, MagicMock, MagicMock],
 ) -> None:
     """Успешный платёж сбрасывает счётчик Inactive-донора."""
     donor = make_donor(

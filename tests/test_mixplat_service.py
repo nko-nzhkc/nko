@@ -5,7 +5,9 @@ from typing import Any
 import pytest
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.test import APIClient
 
+from api.mixplat_service import string_to_date
 from contacts.models import Donor
 from donor_base.constants import DATE_FORMAT, SubscriptionStatuses
 from mixplat.models import MixPlat
@@ -13,8 +15,6 @@ from mixplat.models import MixPlat
 
 def test_string_to_date_returns_aware_datetime() -> None:
     """Строковая дата преобразуется в timezone-aware datetime."""
-    from api.mixplat_service import string_to_date
-
     value = "2024-01-02 03:04:05"
     result = string_to_date(value)
 
@@ -22,6 +22,7 @@ def test_string_to_date_returns_aware_datetime() -> None:
     assert result.strftime(DATE_FORMAT) == value
 
 
+@pytest.mark.usefixtures("sync_task", "email_task", "chain_factory")
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     ("recurrent_id", "expected_subscription"),
@@ -31,12 +32,12 @@ def test_string_to_date_returns_aware_datetime() -> None:
     ],
 )
 def test_mixplat_webhook_saves_payment_and_donor(
+    mixplat_payload: dict[str, str | None],
+    api_client: APIClient,
+    django_capture_on_commit_callbacks: Any,
+    *,
     recurrent_id: str | None,
     expected_subscription: str,
-    mixplat_payload: dict[str, str | None],
-    api_client: Any,
-    donor_workflow: Any,
-    django_capture_on_commit_callbacks: Any,
 ) -> None:
     """Webhook action сохраняет платёж и обновляет реального донора."""
     mixplat_payload["recurrent_id"] = recurrent_id
@@ -72,9 +73,10 @@ def test_mixplat_webhook_saves_payment_and_donor(
     ],
 )
 def test_mixplat_webhook_rejects_invalid_payload(
-    invalid_case: str,
     mixplat_payload: dict[str, str | None],
-    api_client: Any,
+    api_client: APIClient,
+    *,
+    invalid_case: str,
 ) -> None:
     """Не-object payload, пропущенное поле и неверные типы дают 400."""
     payload: Any = dict(mixplat_payload)

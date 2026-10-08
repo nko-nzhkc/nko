@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 import zapros
 from faker import Faker
+from pytest_django import Settings
 from zapros.mock import Mock
 
 from api.unisender_service import (
@@ -27,12 +28,13 @@ from donor_base.constants import SubscriptionStatuses
     ],
 )
 def test_send_request_returns_none_for_error_payloads(
-    response_data: dict[str, Any],
-    settings: Any,
+    settings: Settings,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
         Mock,
     ],
+    *,
+    response_data: dict[str, Any],
 ) -> None:
     """Error и неизвестный JSON обрабатываются через публичный сервис."""
     route_zapros_response(
@@ -48,7 +50,7 @@ def test_send_request_returns_none_for_error_payloads(
 
 
 def test_send_payment_email_stops_when_template_is_not_returned(
-    settings: Any,
+    settings: Settings,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
         Mock,
@@ -70,7 +72,7 @@ def test_send_payment_email_stops_when_template_is_not_returned(
 
 
 def test_send_payment_email_handles_send_error(
-    settings: Any,
+    settings: Settings,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
         Mock,

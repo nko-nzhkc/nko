@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from http import HTTPMethod
-from typing import TYPE_CHECKING, Any
-from unittest.mock import MagicMock
+from typing import Any
+from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlsplit
 
 import dishka
@@ -14,14 +14,14 @@ import zapros
 from faker import Faker
 from rest_framework.parsers import JSONParser
 from rest_framework.request import Request
-from rest_framework.test import APIRequestFactory, APIClient
+from rest_framework.test import APIClient, APIRequestFactory
 from zapros.matchers import path
 from zapros.mock import Mock, MockMiddleware, MockRouter
 
+from api import donor_service
+from contacts.models import Donor
 from donor_base import di
-
-if TYPE_CHECKING:
-    from contacts.models import Donor
+from donor_base.constants import SubscriptionStatuses
 
 
 @pytest.fixture
@@ -104,8 +104,6 @@ def parse_zapros_form() -> Callable[[zapros.Request], dict[str, str]]:
 @pytest.fixture
 def make_donor(db: object, faker: Faker) -> Callable[..., Donor]:
     """Создаёт реальную запись Donor с указанным состоянием."""
-    from contacts.models import Donor
-    from donor_base.constants import SubscriptionStatuses
 
     def create_donor(
         *,
@@ -124,32 +122,44 @@ def make_donor(db: object, faker: Faker) -> Callable[..., Donor]:
 
 
 @pytest.fixture
-def donor_workflow(
-    monkeypatch: pytest.MonkeyPatch,
-) -> tuple[MagicMock, MagicMock, MagicMock]:
-    """Изолирует публикацию задач и цепочек Celery."""
-    from api import donor_service
-
-    sync_task = MagicMock(name="send_users_to_unisender")
-    email_task = MagicMock(name="send_payment_email_task")
-    chain_factory = MagicMock(name="chain")
-
+def sync_task(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """Подменяет Celery-задачу синхронизации с Unisender."""
+    task = MagicMock(name="send_users_to_unisender")
     monkeypatch.setattr(
         donor_service,
         "send_users_to_unisender",
-        sync_task,
+        task,
     )
+    return task
+
+
+@pytest.fixture
+def email_task(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """Подменяет Celery-задачу отправки письма."""
+    task = MagicMock(name="send_payment_email_task")
     monkeypatch.setattr(
         donor_service,
         "send_payment_email_task",
-        email_task,
+        task,
     )
-    monkeypatch.setattr(
-        donor_service,
-        "chain",
-        chain_factory,
-    )
-    return sync_task, email_task, chain_factory
+    return task
+
+
+@pytest.fixture
+def chain_factory(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """Подменяет создание Celery chain."""
+    factory = MagicMock(name="chain")
+    monkeypatch.setattr(donor_service, "chain", factory)
+    return factory
+
+
+@pytest.fixture
+def api_request() -> Iterator[MagicMock]:
+    """Изолирует отправку запроса во внешний Unisender."""
+    with patch(
+        "donor_base.unisender_client.Client._api_request",
+    ) as request:
+        yield request
 
 
 @pytest.fixture

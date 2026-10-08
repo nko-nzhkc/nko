@@ -1,20 +1,19 @@
 """Тесты выполняемых на текущем коде сценариев CloudPayments."""
 
+from base64 import b64decode
 from collections.abc import Callable
 from datetime import UTC, datetime
 from http import HTTPMethod, HTTPStatus
 from typing import Any
-from unittest.mock import MagicMock
-from urllib.parse import urlsplit
 
-import dishka
 import pytest
 import zapros
-from django.test import override_settings
-from zapros.matchers import path
-from zapros.mock import Mock, MockMiddleware, MockRouter
+from faker import Faker
+from inline_snapshot import snapshot
+from pytest_django.fixtures import Settings
+from rest_framework.request import Request
+from zapros.mock import Mock
 
-from api import cloudpayments_service
 from api.cloudpayments_service import (
     check_cloudpayments_connection,
     check_donor_subscriptions,
@@ -23,13 +22,30 @@ from api.cloudpayments_service import (
 from api.serializers import CloudpaymentsSerializer
 from cloudpayments.models import CloudPayment
 from contacts.models import Donor
-from donor_base import di
 from donor_base.constants import SubscriptionStatuses
 
+CLOUDPAYMENTS_TEST_URL = "https://cloudpayments.test/test"
+CLOUDPAYMENTS_FIND_URL = (
+    "https://api.cloudpayments.example/subscriptions/find"
+)
+TEST_PUBLIC_ID = "test-public-id"
+TEST_CREDENTIAL = "test-api-secret"
+TEST_EMAIL = "donor@example.org"
 
+
+@pytest.fixture
+def cloudpayments_settings(settings: Settings) -> None:
+    """Настраивает общие тестовые значения CloudPayments."""
+    settings.CLOUDPAYMENTS_API_TEST_URL = CLOUDPAYMENTS_TEST_URL
+    settings.CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL = CLOUDPAYMENTS_FIND_URL
+    settings.CLOUDPAYMENTS_PUBLIC_ID = TEST_PUBLIC_ID
+    settings.CLOUDPAYMENTS_API_SECRET = TEST_CREDENTIAL
+
+
+@pytest.mark.usefixtures("zapros_router")
 def test_connection_returns_false_without_test_url(
-    settings: Any,
-    zapros_router: MockRouter,
+    settings: Settings,
+    cloudpayments_settings: None,
 ) -> None:
     """Отсутствующий URL не приводит к HTTP-запросу."""
     settings.CLOUDPAYMENTS_API_TEST_URL = None
@@ -38,21 +54,16 @@ def test_connection_returns_false_without_test_url(
 
 
 def test_connection_returns_true_and_sends_auth(
-    settings: Any,
+    cloudpayments_settings: None,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
         Mock,
     ],
 ) -> None:
     """Успешная проверка credentials использует Basic Auth."""
-    url = "https://cloudpayments.test/test"
-    settings.CLOUDPAYMENTS_API_TEST_URL = url
-    settings.CLOUDPAYMENTS_PUBLIC_ID = "public"
-    test_value = "secret"
-    settings.CLOUDPAYMENTS_API_SECRET = test_value
     route = route_zapros_response(
         HTTPMethod.POST,
-        url,
+        CLOUDPAYMENTS_TEST_URL,
         zapros.Response(
             status=HTTPStatus.OK,
             json={},
@@ -64,7 +75,14 @@ def test_connection_returns_true_and_sends_auth(
     request = route.calls[0]
     assert request.method == HTTPMethod.POST
     assert request.headers["Content-Type"] == "application/json"
-    assert request.headers["Authorization"] == "Basic cHVibGljOnNlY3JldA=="
+
+    scheme, encoded_credentials = request.headers["Authorization"].split(
+        maxsplit=1,
+    )
+    assert scheme == "Basic"
+    assert b64decode(encoded_credentials, validate=True) == (
+        f"{TEST_PUBLIC_ID}:{TEST_CREDENTIAL}".encode()
+    )
 
 
 @pytest.mark.parametrize(
@@ -72,19 +90,18 @@ def test_connection_returns_true_and_sends_auth(
     [HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN],
 )
 def test_connection_returns_false_for_bad_credentials(
-    status_code: HTTPStatus,
-    settings: Any,
+    cloudpayments_settings: None,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
         Mock,
     ],
+    *,
+    status_code: HTTPStatus,
 ) -> None:
     """401 и 403 от CloudPayments означают отклонённые credentials."""
-    url = "https://cloudpayments.test/test"
-    settings.CLOUDPAYMENTS_API_TEST_URL = url
     route_zapros_response(
         HTTPMethod.POST,
-        url,
+        CLOUDPAYMENTS_TEST_URL,
         zapros.Response(status=status_code),
     )
 
@@ -92,18 +109,16 @@ def test_connection_returns_false_for_bad_credentials(
 
 
 def test_connection_reraises_unexpected_status(
-    settings: Any,
+    cloudpayments_settings: None,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
         Mock,
     ],
 ) -> None:
     """Неожиданный status остаётся zapros.StatusCodeError."""
-    url = "https://cloudpayments.test/test"
-    settings.CLOUDPAYMENTS_API_TEST_URL = url
     route_zapros_response(
         HTTPMethod.POST,
-        url,
+        CLOUDPAYMENTS_TEST_URL,
         zapros.Response(status=HTTPStatus.INTERNAL_SERVER_ERROR),
     )
 
@@ -120,9 +135,10 @@ def test_connection_reraises_unexpected_status(
     ],
 )
 def test_handling_rejects_invalid_structure(
+    drf_json_request: Callable[[Any], Request],
+    *,
     payload: Any,
     error_type: type[Exception],
-    drf_json_request: Callable[[Any], Any],
 ) -> None:
     """Структура без данных Model или с пустым Model отклоняется."""
     with pytest.raises(error_type):
@@ -130,21 +146,25 @@ def test_handling_rejects_invalid_structure(
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("sync_task", "email_task", "chain_factory")
 def test_handling_maps_payment_and_updates_donor(
     cloudpayment_payload: dict[str, Any],
-    drf_json_request: Callable[[Any], Any],
-    donor_workflow: tuple[MagicMock, MagicMock, MagicMock],
+    drf_json_request: Callable[[Any], Request],
+    cloudpayments_settings: None,
+    route_zapros_response: Callable[
+        [HTTPMethod, str, zapros.Response],
+        Mock,
+    ],
     django_capture_on_commit_callbacks: Any,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Проверяется mapping webhook и реальное изменение записи Donor."""
-    def active_subscription(_email: str) -> str:
-        return SubscriptionStatuses.ACTIVE.capitalized
-
-    monkeypatch.setattr(
-        cloudpayments_service,
-        "check_donor_subscriptions",
-        active_subscription,
+    """Mapping webhook использует реальный lookup и обновляет Donor."""
+    subscription_route = route_zapros_response(
+        HTTPMethod.POST,
+        CLOUDPAYMENTS_FIND_URL,
+        zapros.Response(
+            status=HTTPStatus.OK,
+            json={"Model": [{"Id": "subscription-id"}]},
+        ),
     )
 
     with django_capture_on_commit_callbacks(execute=True):
@@ -153,28 +173,32 @@ def test_handling_maps_payment_and_updates_donor(
         )
 
     model = cloudpayment_payload["Model"][0]
-    assert result == {
-        "email": model["Email"],
-        "donat": 100,
-        "date_created": "2024-01-02T03:04:05Z",
-        "date_processed": "2024-01-02T03:05:05Z",
-        "payment_id": 12345,
-        "status": "Completed",
-        "payment_operator": "Cloudpayment",
-        "payment_method": "Visa",
-        "user_account_id": 12345,
-        "currency": "RUB",
-    }
+    assert result == snapshot(
+        {
+            "email": model["Email"],
+            "donat": model["Amount"],
+            "date_created": model["CreatedDateIso"],
+            "date_processed": model["ConfirmDateIso"],
+            "payment_id": model["TransactionId"],
+            "status": model["Status"],
+            "payment_operator": "Cloudpayment",
+            "payment_method": model["CardType"],
+            "user_account_id": model["TransactionId"],
+            "currency": model["Currency"],
+        },
+    )
     assert Donor.objects.get(email=model["Email"]).subscription == (
         SubscriptionStatuses.ACTIVE.capitalized
     )
+    subscription_route.assert_called_once()
 
 
-def _serializer_data(email: str, amount: int) -> dict[str, Any]:
-    """Строит поля, необходимые CloudpaymentsSerializer."""
+@pytest.fixture
+def serializer_data(faker: Faker) -> dict[str, Any]:
+    """Возвращает общие поля для CloudpaymentsSerializer."""
     return {
-        "email": email,
-        "donat": amount,
+        "email": faker.unique.email(),
+        "donat": 100,
         "custom_donat": 0,
         "payment_method": "Visa",
         "monthly_donat": False,
@@ -205,12 +229,10 @@ def _serializer_data(email: str, amount: int) -> dict[str, Any]:
 
 @pytest.mark.django_db
 def test_cloudpayment_serializer_saves_valid_data(
-    faker: Any,
+    serializer_data: dict[str, Any],
 ) -> None:
     """Serializer сохраняет валидный платёж в тестовую БД."""
-    serializer = CloudpaymentsSerializer(
-        data=_serializer_data(faker.unique.email(), 100),
-    )
+    serializer = CloudpaymentsSerializer(data=serializer_data)
 
     assert serializer.is_valid(), serializer.errors
     payment = serializer.save()
@@ -223,53 +245,52 @@ def test_cloudpayment_serializer_saves_valid_data(
 
 @pytest.mark.django_db
 def test_cloudpayment_serializer_rejects_negative_amount(
-    faker: Any,
+    serializer_data: dict[str, Any],
 ) -> None:
     """Serializer отклоняет отрицательную сумму платежа."""
     serializer = CloudpaymentsSerializer(
-        data=_serializer_data(faker.unique.email(), -1),
+        data=serializer_data | {"donat": -1},
     )
 
     assert not serializer.is_valid()
     assert "donat" in serializer.errors
 
 
-def test_check_donor_subscriptions_returns_active_for_nonempty_model(
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize(
+    ("model", "expected_subscription"),
+    [
+        (
+            [{"Id": "subscription-id"}],
+            SubscriptionStatuses.ACTIVE.capitalized,
+        ),
+        (
+            [],
+            SubscriptionStatuses.INACTIVE.capitalized,
+        ),
+    ],
+    ids=["active", "inactive"],
+)
+def test_check_donor_subscriptions_maps_model_presence(
+    cloudpayments_settings: None,
+    route_zapros_response: Callable[
+        [HTTPMethod, str, zapros.Response],
+        Mock,
+    ],
+    *,
+    model: list[dict[str, str]],
+    expected_subscription: str,
 ) -> None:
-    """Непустая Model в ответе CloudPayments означает активную подписку."""
-    url = "https://api.cloudpayments.example/subscriptions/find"
-    parsed_url = urlsplit(url)
-    assert parsed_url.hostname is not None
-
-    router = MockRouter()
-    response_mock = Mock.given(
-        path(parsed_url.path)
-        .method(HTTPMethod.POST)
-        .host(parsed_url.hostname),
-    ).respond(
+    """Непустая Model активирует подписку, пустая — деактивирует."""
+    route = route_zapros_response(
+        HTTPMethod.POST,
+        CLOUDPAYMENTS_FIND_URL,
         zapros.Response(
             status=HTTPStatus.OK,
-            json={"Model": [{"Id": "subscription-id"}]},
+            json={"Model": model},
         ),
     )
-    router.add(response_mock)
 
-    client = zapros.Client(handler=MockMiddleware(router))
-    container = dishka.make_container(context={zapros.Client: client})
-    monkeypatch.setattr(di, "container", container)
+    result = check_donor_subscriptions(TEST_EMAIL)
 
-    test_value = "test-api-secret"
-
-    try:
-        with override_settings(
-            CLOUDPAYMENTS_PUBLIC_ID="test-public-id",
-            CLOUDPAYMENTS_API_SECRET=test_value,
-            CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL=url,
-        ):
-            status = check_donor_subscriptions("donor@example.org")
-    finally:
-        container.close()
-
-    response_mock.assert_called_once()
-    assert status == SubscriptionStatuses.ACTIVE.capitalized
+    route.assert_called_once()
+    assert result == expected_subscription
