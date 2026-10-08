@@ -5,7 +5,6 @@ from http import HTTPMethod
 from typing import Any
 
 import zapros
-from django.conf import settings
 from zapros.mock import Mock
 
 from api.tasks import send_payment_email_task

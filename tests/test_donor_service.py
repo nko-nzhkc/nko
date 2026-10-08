@@ -26,6 +26,7 @@ from donor_base.constants import (
 )
 def test_new_donor_is_created_with_payment_subscription(
     subscription: str,
+    *,
     sends_email: bool,
     faker: Faker,
     donor_workflow: tuple[MagicMock, MagicMock, MagicMock],

@@ -6,10 +6,8 @@ from typing import Any
 
 import pytest
 import zapros
-from django.conf import settings
 from django.utils import timezone
 from faker import Faker
-from rest_framework import status
 from rest_framework.test import APIClient
 from zapros.mock import Mock
 
@@ -100,7 +98,9 @@ def test_contact_callback_imports_only_new_donors(
         Mock,
     ],
 ) -> None:
-    """POST callback скачивает CSV, пропускает дубликат и импортирует нового."""
+    """POST callback скачивает CSV,
+    пропускает дубликат и импортирует нового.
+    """
     monkeypatch.chdir(tmp_path)
     existing_email = faker.unique.email()
     make_donor(

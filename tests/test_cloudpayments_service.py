@@ -5,21 +5,25 @@ from datetime import UTC, datetime
 from http import HTTPMethod, HTTPStatus
 from typing import Any
 from unittest.mock import MagicMock
+from urllib.parse import urlsplit
 
+import dishka
 import pytest
 import zapros
-from django.conf import settings
-from rest_framework.test import APIClient
-from zapros.mock import Mock, MockRouter
+from django.test import override_settings
+from zapros.matchers import path
+from zapros.mock import Mock, MockMiddleware, MockRouter
 
 from api import cloudpayments_service
 from api.cloudpayments_service import (
     check_cloudpayments_connection,
+    check_donor_subscriptions,
     handling_cloudpayment_data,
 )
 from api.serializers import CloudpaymentsSerializer
 from cloudpayments.models import CloudPayment
 from contacts.models import Donor
+from donor_base import di
 from donor_base.constants import SubscriptionStatuses
 
 
@@ -44,7 +48,8 @@ def test_connection_returns_true_and_sends_auth(
     url = "https://cloudpayments.test/test"
     settings.CLOUDPAYMENTS_API_TEST_URL = url
     settings.CLOUDPAYMENTS_PUBLIC_ID = "public"
-    settings.CLOUDPAYMENTS_API_SECRET = "secret"
+    test_value = "secret"
+    settings.CLOUDPAYMENTS_API_SECRET = test_value
     route = route_zapros_response(
         HTTPMethod.POST,
         url,
@@ -136,8 +141,6 @@ def test_handling_maps_payment_and_updates_donor(
     def active_subscription(_email: str) -> str:
         return SubscriptionStatuses.ACTIVE.capitalized
 
-    # Изолируется только внешний subscription lookup. Это не тест
-    # check_donor_subscriptions и не скрывает его несовместимость с zapros.
     monkeypatch.setattr(
         cloudpayments_service,
         "check_donor_subscriptions",
@@ -229,3 +232,44 @@ def test_cloudpayment_serializer_rejects_negative_amount(
 
     assert not serializer.is_valid()
     assert "donat" in serializer.errors
+
+
+def test_check_donor_subscriptions_returns_active_for_nonempty_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Непустая Model в ответе CloudPayments означает активную подписку."""
+    url = "https://api.cloudpayments.example/subscriptions/find"
+    parsed_url = urlsplit(url)
+    assert parsed_url.hostname is not None
+
+    router = MockRouter()
+    response_mock = Mock.given(
+        path(parsed_url.path)
+        .method(HTTPMethod.POST)
+        .host(parsed_url.hostname),
+    ).respond(
+        zapros.Response(
+            status=HTTPStatus.OK,
+            json={"Model": [{"Id": "subscription-id"}]},
+        ),
+    )
+    router.add(response_mock)
+
+    client = zapros.Client(handler=MockMiddleware(router))
+    container = dishka.make_container(context={zapros.Client: client})
+    monkeypatch.setattr(di, "container", container)
+
+    test_value = "test-api-secret"
+
+    try:
+        with override_settings(
+            CLOUDPAYMENTS_PUBLIC_ID="test-public-id",
+            CLOUDPAYMENTS_API_SECRET=test_value,
+            CLOUDPAYMENTS_SUBSCRIPTION_FIND_URL=url,
+        ):
+            status = check_donor_subscriptions("donor@example.org")
+    finally:
+        container.close()
+
+    response_mock.assert_called_once()
+    assert status == SubscriptionStatuses.ACTIVE.capitalized

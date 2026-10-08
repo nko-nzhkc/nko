@@ -87,7 +87,7 @@ def parse_zapros_form() -> Callable[[zapros.Request], dict[str, str]]:
 
     def parse_form(request: zapros.Request) -> dict[str, str]:
         if not isinstance(request.body, bytes):
-            raise AssertionError("Ожидалось bytes-тело form-urlencoded")
+            raise TypeError("Ожидалось bytes-тело form-urlencoded")
 
         fields = parse_qs(
             request.body.decode("utf-8"),

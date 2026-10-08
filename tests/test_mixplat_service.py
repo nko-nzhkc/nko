@@ -4,7 +4,6 @@ from typing import Any
 
 import pytest
 from django.utils import timezone
-from inline_snapshot import snapshot
 from rest_framework import status
 
 from contacts.models import Donor

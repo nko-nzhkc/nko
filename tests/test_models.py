@@ -15,7 +15,7 @@ def test_model_string_representations(faker):
         email=faker.unique.email(),
         subject="subject",
         comment="comment",
-        password="password",
+        password=faker.password(),
     )
     donor = Donor.objects.create(
         email="donor@example.com",

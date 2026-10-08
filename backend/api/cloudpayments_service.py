@@ -36,7 +36,7 @@ def check_donor_subscriptions(email: str) -> str:
     )
     return (
         SubscriptionStatuses.ACTIVE.capitalized
-        if response.json()["Model"]
+        if response.json["Model"]
         else SubscriptionStatuses.INACTIVE.capitalized
     )
 

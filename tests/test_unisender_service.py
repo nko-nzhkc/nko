@@ -7,7 +7,6 @@ from typing import Any
 
 import pytest
 import zapros
-from django.conf import settings
 from faker import Faker
 from zapros.mock import Mock
 
