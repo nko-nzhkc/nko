@@ -8,7 +8,7 @@ from forbiddenwords.models import ForbiddenWord
 
 
 @pytest.mark.django_db
-def test_forbidden_words_validator_accepts_value_without_forbidden_words():
+def test_validator_accepts_clean_value():
     """Валидатор проходит по всем словам и не падает, если совпадений нет."""
     ForbiddenWord.objects.create(forbidden_word="spam")
 
@@ -16,7 +16,7 @@ def test_forbidden_words_validator_accepts_value_without_forbidden_words():
 
 
 @pytest.mark.django_db
-def test_forbidden_words_validator_rejects_forbidden_word():
+def test_validator_rejects_forbidden_word():
     """Валидатор отклоняет значение, содержащее запрещённое слово."""
     ForbiddenWord.objects.create(forbidden_word="spam")
 

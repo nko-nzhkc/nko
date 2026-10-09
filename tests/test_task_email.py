@@ -1,7 +1,7 @@
 """Тест передачи письма через Celery task и Unisender service."""
 
 from collections.abc import Callable
-from http import HTTPMethod
+from http import HTTPMethod, HTTPStatus
 
 import zapros
 from pytest_django import Settings
@@ -10,7 +10,7 @@ from zapros.mock import Mock
 from api.tasks import send_payment_email_task
 
 
-def test_email_task_delegates_to_unisender_service(
+def test_email_task_uses_unisender_service(
     settings: Settings,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
@@ -28,7 +28,7 @@ def test_email_task_delegates_to_unisender_service(
         HTTPMethod.POST,
         settings.URL_GET_TEMP,
         zapros.Response(
-            status=200,
+            status=HTTPStatus.OK,
             json={
                 "result": {
                     "subject": "Thank you",
@@ -41,7 +41,7 @@ def test_email_task_delegates_to_unisender_service(
         HTTPMethod.POST,
         settings.URL_SEND_EMAIL,
         zapros.Response(
-            status=200,
+            status=HTTPStatus.OK,
             json={"result": {"email_id": 123}},
         ),
     )

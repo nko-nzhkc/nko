@@ -17,6 +17,10 @@ from contacts.models import Donor
 from donor_base.constants import SubscriptionStatuses
 from mixplat.models import MixPlat
 
+CONTACT_RESULT_KEY = "result"
+ACTIVE_SUBSCRIPTION_GROUP_ID = SubscriptionStatuses.ACTIVE.group_id
+INACTIVE_SUBSCRIPTION_GROUP_ID = SubscriptionStatuses.INACTIVE.group_id
+
 
 def test_contact_start_sends_export_request(
     api_client: APIClient,
@@ -27,7 +31,7 @@ def test_contact_start_sends_export_request(
     ],
     parse_zapros_form: Callable[[zapros.Request], dict[str, str]],
 ) -> None:
-    """start вызывает Unisender exportContacts и возвращает его payload."""
+    """Start вызывает Unisender exportContacts и возвращает его payload."""
     settings.UNISENDER_API_KEY = "test-api-key"
     settings.NOTIFY_URL = "https://notify.test/callback"
     settings.EXPORT_UNISENDER = "https://unisender.test/export"
@@ -36,7 +40,7 @@ def test_contact_start_sends_export_request(
         settings.EXPORT_UNISENDER,
         zapros.Response(
             status=HTTPStatus.OK,
-            json={"result": {"task_uuid": "task-1"}},
+            json={CONTACT_RESULT_KEY: {"task_uuid": "task-1"}},
         ),
     )
 
@@ -48,7 +52,7 @@ def test_contact_start_sends_export_request(
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {
-        "result": {"task_uuid": "task-1"},
+        CONTACT_RESULT_KEY: {"task_uuid": "task-1"},
     }
     assert parse_zapros_form(route.calls[0]) == {
         "api_key": "test-api-key",
@@ -59,7 +63,7 @@ def test_contact_start_sends_export_request(
     }
 
 
-def test_contact_get_contacts_get_returns_empty_ok(
+def test_contact_get_contacts_get_empty_ok(
     api_client: APIClient,
 ) -> None:
     """GET callback получает пустой HTTP 200."""
@@ -76,7 +80,7 @@ def test_contact_get_contacts_get_returns_empty_ok(
         "/api/contacts/get_contacts/",
     ],
 )
-def test_contact_post_actions_reject_non_object_payload(
+def test_contact_post_rejects_non_object_payload(
     api_client: APIClient,
     *,
     url: str,
@@ -114,9 +118,9 @@ def test_contact_callback_imports_only_new_donors(
     file_url = "https://files.test/contacts.csv"
     csv_data = (
         "email,email_list_ids\n"
-        f"{existing_email},{SubscriptionStatuses.ACTIVE.group_id}\n"
-        f"{new_email},{SubscriptionStatuses.INACTIVE.group_id}\n"
-    ).encode("utf-8")
+        f"{existing_email},{ACTIVE_SUBSCRIPTION_GROUP_ID}\n"
+        f"{new_email},{INACTIVE_SUBSCRIPTION_GROUP_ID}\n"
+    ).encode()
     route_zapros_response(
         HTTPMethod.GET,
         file_url,
@@ -128,13 +132,13 @@ def test_contact_callback_imports_only_new_donors(
 
     response = api_client.post(
         "/api/contacts/get_contacts/",
-        data={"result": {"file_to_download": file_url}},
+        data={CONTACT_RESULT_KEY: {"file_to_download": file_url}},
         format="json",
     )
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {
-        "result": "Добавлено 1 контактов.",
+        CONTACT_RESULT_KEY: "Добавлено 1 контактов.",
     }
     assert Donor.objects.count() == 2
     assert Donor.objects.get(email=existing_email).subscription == (
@@ -146,12 +150,11 @@ def test_contact_callback_imports_only_new_donors(
 
 
 @pytest.mark.django_db
-def test_payments_list_returns_union_from_real_querysets(
+def test_payments_list_unions_real_querysets(
     api_client: APIClient,
     faker: Faker,
 ) -> None:
     """Endpoint возвращает платежи из двух настоящих QuerySet."""
-    created_at = timezone.now()
     payment_fields: dict[str, Any] = {
         "donat": 100,
         "custom_donat": 0,
@@ -160,10 +163,10 @@ def test_payments_list_returns_union_from_real_querysets(
         "subscription": False,
         "status": "Completed",
         "user_account_id": 42,
-        "date_created": created_at,
-        "date_processed": created_at,
+        "date_created": timezone.now(),
         "currency": "RUB",
     }
+    payment_fields["date_processed"] = payment_fields["date_created"]
     cloud_email = faker.unique.email()
     mixplat_email = faker.unique.email()
 
@@ -185,7 +188,7 @@ def test_payments_list_returns_union_from_real_querysets(
     assert response.status_code == HTTPStatus.OK
     payload = response.json()
     assert payload["count"] == 2
-    assert {item["email"] for item in payload["results"]} == {
+    assert {payment_data["email"] for payment_data in payload["results"]} == {
         cloud_email,
         mixplat_email,
     }

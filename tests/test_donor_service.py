@@ -15,6 +15,8 @@ from donor_base.constants import (
     SubscriptionStatuses,
 )
 
+COMPLETED_PAYMENT_STATUS = "Completed"
+
 
 pytestmark = pytest.mark.usefixtures(
     "sync_task",
@@ -25,29 +27,30 @@ pytestmark = pytest.mark.usefixtures(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    ("subscription", "sends_email"),
+    "subscription_case",
     [
         (SubscriptionStatuses.ACTIVE.capitalized, True),
         (SubscriptionStatuses.INACTIVE.capitalized, False),
     ],
+    ids=["active", "inactive"],
 )
-def test_new_donor_is_created_with_payment_subscription(
+def test_new_donor_uses_payment_subscription(
     faker: Faker,
     django_capture_on_commit_callbacks: Any,
     sync_task: MagicMock,
     email_task: MagicMock,
     chain_factory: MagicMock,
     *,
-    subscription: str,
-    sends_email: bool,
+    subscription_case: tuple[str, bool],
 ) -> None:
     """Новый донор создаётся с переданным статусом подписки."""
+    subscription, sends_email = subscription_case
     email = faker.unique.email()
 
     with django_capture_on_commit_callbacks(execute=True):
         create_or_update_donor(
             donor_email=email,
-            payment_status="Completed",
+            payment_status=COMPLETED_PAYMENT_STATUS,
             subscription=subscription,
         )
 
@@ -82,7 +85,7 @@ def test_new_lost_donor_is_not_created(
 
     create_or_update_donor(
         donor_email=email,
-        payment_status="Completed",
+        payment_status=COMPLETED_PAYMENT_STATUS,
         subscription=SubscriptionStatuses.LOST.capitalized,
     )
 
@@ -93,7 +96,7 @@ def test_new_lost_donor_is_not_created(
 
 
 @pytest.mark.django_db
-def test_failed_payment_increments_active_donor_count(
+def test_failed_payment_counts_active_donor(
     make_donor: Callable[..., Donor],
 ) -> None:
     """Неудачный платёж до порога увеличивает счётчик отказов."""
@@ -114,7 +117,7 @@ def test_failed_payment_increments_active_donor_count(
 
 
 @pytest.mark.django_db
-def test_third_failed_payment_marks_active_donor_lost(
+def test_third_failure_marks_active_donor_lost(
     make_donor: Callable[..., Donor],
     sync_task: MagicMock,
     django_capture_on_commit_callbacks: Any,
@@ -142,7 +145,7 @@ def test_third_failed_payment_marks_active_donor_lost(
 
 
 @pytest.mark.django_db
-def test_failed_payment_does_not_change_inactive_donor(
+def test_failed_payment_keeps_inactive_donor(
     make_donor: Callable[..., Donor],
 ) -> None:
     """Отказ платежа не меняет счётчик Inactive-донора."""
@@ -163,7 +166,7 @@ def test_failed_payment_does_not_change_inactive_donor(
 
 
 @pytest.mark.django_db
-def test_successful_payment_reactivates_lost_donor(
+def test_successful_payment_reactivates_lost(
     make_donor: Callable[..., Donor],
     sync_task: MagicMock,
     email_task: MagicMock,
@@ -179,7 +182,7 @@ def test_successful_payment_reactivates_lost_donor(
     with django_capture_on_commit_callbacks(execute=True):
         create_or_update_donor(
             donor_email=donor.email,
-            payment_status="Completed",
+            payment_status=COMPLETED_PAYMENT_STATUS,
             subscription=SubscriptionStatuses.ACTIVE.capitalized,
         )
 
@@ -198,7 +201,7 @@ def test_successful_payment_reactivates_lost_donor(
 
 
 @pytest.mark.django_db
-def test_successful_payment_resets_active_donor_count(
+def test_successful_payment_resets_active_count(
     make_donor: Callable[..., Donor],
 ) -> None:
     """Успешный платёж сбрасывает счётчик Active-донора."""
@@ -209,7 +212,7 @@ def test_successful_payment_resets_active_donor_count(
 
     create_or_update_donor(
         donor_email=donor.email,
-        payment_status="Completed",
+        payment_status=COMPLETED_PAYMENT_STATUS,
         subscription=SubscriptionStatuses.ACTIVE.capitalized,
     )
 
@@ -219,7 +222,7 @@ def test_successful_payment_resets_active_donor_count(
 
 
 @pytest.mark.django_db
-def test_successful_payment_resets_inactive_donor_count(
+def test_successful_payment_resets_inactive_count(
     make_donor: Callable[..., Donor],
 ) -> None:
     """Успешный платёж сбрасывает счётчик Inactive-донора."""
@@ -230,7 +233,7 @@ def test_successful_payment_resets_inactive_donor_count(
 
     create_or_update_donor(
         donor_email=donor.email,
-        payment_status="Completed",
+        payment_status=COMPLETED_PAYMENT_STATUS,
         subscription=SubscriptionStatuses.INACTIVE.capitalized,
     )
 

@@ -21,7 +21,6 @@ from donor_base.constants import SubscriptionStatuses
 from donor_base.subscriptions import get_group_by_capitalized
 
 
-
 @pytest.fixture(autouse=True)
 def task_retry() -> Iterator[MagicMock]:
     """Подменяет общий механизм retry для задач этого модуля."""

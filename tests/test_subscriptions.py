@@ -27,7 +27,7 @@ def test_subscription_helpers_map_known_values(
     )
 
 
-def test_subscription_helpers_raise_for_unknown_values() -> None:
+def test_unknown_subscription_helpers_raise() -> None:
     """Оба helper-а отклоняют неизвестные значения."""
     with pytest.raises(ValueError, match="Не удалось найти значение"):
         get_capitalized_by_group_id("unknown")

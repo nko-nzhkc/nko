@@ -1,4 +1,4 @@
-"""Тесты выполняемых на текущем коде сценариев CloudPayments."""
+"""Тесты интеграции с CloudPayments."""
 
 from base64 import b64decode
 from collections.abc import Callable
@@ -29,6 +29,9 @@ CLOUDPAYMENTS_FIND_URL = "https://api.cloudpayments.example/subscriptions/find"
 TEST_PUBLIC_ID = "test-public-id"
 TEST_CREDENTIAL = "test-api-secret"
 TEST_EMAIL = "donor@example.org"
+CLOUDPAYMENTS_MODEL_KEY = "Model"
+DONATION_FIELD = "donat"
+TEST_YEAR = 2024
 
 
 @pytest.fixture
@@ -41,7 +44,7 @@ def cloudpayments_settings(settings: Settings) -> None:
 
 
 @pytest.mark.usefixtures("zapros_router")
-def test_connection_returns_false_without_test_url(
+def test_connection_false_without_test_url(
     settings: Settings,
     cloudpayments_settings: None,
 ) -> None:
@@ -87,7 +90,7 @@ def test_connection_returns_true_and_sends_auth(
     "status_code",
     [HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN],
 )
-def test_connection_returns_false_for_bad_credentials(
+def test_connection_false_for_bad_credentials(
     cloudpayments_settings: None,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
@@ -129,7 +132,7 @@ def test_connection_reraises_unexpected_status(
     [
         ({}, ValueError),
         ([], ValueError),
-        ({"Model": []}, IndexError),
+        ({CLOUDPAYMENTS_MODEL_KEY: []}, IndexError),
     ],
 )
 def test_handling_rejects_invalid_structure(
@@ -161,20 +164,20 @@ def test_handling_maps_payment_and_updates_donor(
         CLOUDPAYMENTS_FIND_URL,
         zapros.Response(
             status=HTTPStatus.OK,
-            json={"Model": [{"Id": "subscription-id"}]},
+            json={CLOUDPAYMENTS_MODEL_KEY: [{"Id": "subscription-id"}]},
         ),
     )
 
     with django_capture_on_commit_callbacks(execute=True):
-        result = handling_cloudpayment_data(
+        payment_data = handling_cloudpayment_data(
             drf_json_request(cloudpayment_payload),
         )
 
-    model = cloudpayment_payload["Model"][0]
-    assert result == snapshot(
+    model = cloudpayment_payload[CLOUDPAYMENTS_MODEL_KEY][0]
+    assert payment_data == snapshot(
         {
             "email": model["Email"],
-            "donat": model["Amount"],
+            DONATION_FIELD: model["Amount"],
             "date_created": model["CreatedDateIso"],
             "date_processed": model["ConfirmDateIso"],
             "payment_id": model["TransactionId"],
@@ -196,7 +199,7 @@ def serializer_data(faker: Faker) -> dict[str, Any]:
     """Возвращает общие поля для CloudpaymentsSerializer."""
     return {
         "email": faker.unique.email(),
-        "donat": 100,
+        DONATION_FIELD: 100,
         "custom_donat": 0,
         "payment_method": "Visa",
         "monthly_donat": False,
@@ -205,7 +208,7 @@ def serializer_data(faker: Faker) -> dict[str, Any]:
         "currency": "RUB",
         "user_account_id": 12345,
         "date_created": datetime(
-            2024,
+            TEST_YEAR,
             1,
             2,
             3,
@@ -214,7 +217,7 @@ def serializer_data(faker: Faker) -> dict[str, Any]:
             tzinfo=UTC,
         ),
         "date_processed": datetime(
-            2024,
+            TEST_YEAR,
             1,
             2,
             3,
@@ -242,16 +245,16 @@ def test_cloudpayment_serializer_saves_valid_data(
 
 
 @pytest.mark.django_db
-def test_cloudpayment_serializer_rejects_negative_amount(
+def test_serializer_rejects_negative_amount(
     serializer_data: dict[str, Any],
 ) -> None:
     """Serializer отклоняет отрицательную сумму платежа."""
     serializer = CloudpaymentsSerializer(
-        data=serializer_data | {"donat": -1},
+        data=serializer_data | {DONATION_FIELD: -1},
     )
 
     assert not serializer.is_valid()
-    assert "donat" in serializer.errors
+    assert DONATION_FIELD in serializer.errors
 
 
 @pytest.mark.parametrize(
@@ -268,7 +271,7 @@ def test_cloudpayment_serializer_rejects_negative_amount(
     ],
     ids=["active", "inactive"],
 )
-def test_check_donor_subscriptions_maps_model_presence(
+def test_donor_subscriptions_match_model(
     cloudpayments_settings: None,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
@@ -284,11 +287,11 @@ def test_check_donor_subscriptions_maps_model_presence(
         CLOUDPAYMENTS_FIND_URL,
         zapros.Response(
             status=HTTPStatus.OK,
-            json={"Model": model},
+            json={CLOUDPAYMENTS_MODEL_KEY: model},
         ),
     )
 
-    result = check_donor_subscriptions(TEST_EMAIL)
+    subscription_result = check_donor_subscriptions(TEST_EMAIL)
 
     route.assert_called_once()
-    assert result == expected_subscription
+    assert subscription_result == expected_subscription

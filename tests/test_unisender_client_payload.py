@@ -1,14 +1,15 @@
 """Тесты сериализации payload клиентом Unisender."""
 
 from collections.abc import Callable
-from http import HTTPMethod
+from http import HTTPMethod, HTTPStatus
 
 import zapros
-from donor_base.unisender_client import Client
 from zapros.mock import Mock
 
+from donor_base.unisender_client import Client
 
-def test_client_flattens_nested_data_and_omits_none(
+
+def test_client_flattens_data_and_omits_none(
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
         Mock,
@@ -21,7 +22,7 @@ def test_client_flattens_nested_data_and_omits_none(
         HTTPMethod.POST,
         url,
         zapros.Response(
-            status=200,
+            status=HTTPStatus.OK,
             json={"result": {"total": 1}},
         ),
     )

@@ -12,14 +12,21 @@ from contacts.models import Donor
 from donor_base.constants import DATE_FORMAT, SubscriptionStatuses
 from mixplat.models import MixPlat
 
+MIXPLAT_CUSTOM_DONAT = 150
+
+
+def _assert_successful_mixplat_response(response: Any) -> None:
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == {"result": "ok"}
+
 
 def test_string_to_date_returns_aware_datetime() -> None:
     """Строковая дата преобразуется в timezone-aware datetime."""
-    value = "2024-01-02 03:04:05"
-    result = string_to_date(value)
+    date_string = "2024-01-02 03:04:05"
+    parsed_datetime = string_to_date(date_string)
 
-    assert timezone.is_aware(result)
-    assert result.strftime(DATE_FORMAT) == value
+    assert timezone.is_aware(parsed_datetime)
+    assert parsed_datetime.strftime(DATE_FORMAT) == date_string
 
 
 @pytest.mark.usefixtures("sync_task", "email_task", "chain_factory")
@@ -49,15 +56,14 @@ def test_mixplat_webhook_saves_payment_and_donor(
             format="json",
         )
 
-    assert response.status_code == status.HTTP_200_OK
-    assert response.json() == {"result": "ok"}
+    _assert_successful_mixplat_response(response)
 
     email = mixplat_payload["user_email"]
     payment = MixPlat.objects.get(email=email)
     donor = Donor.objects.get(email=email)
 
     assert payment.donat == 100
-    assert payment.custom_donat == 150
+    assert payment.custom_donat == MIXPLAT_CUSTOM_DONAT
     assert payment.payment_operator == "mixplat"
     assert donor.subscription == expected_subscription
 

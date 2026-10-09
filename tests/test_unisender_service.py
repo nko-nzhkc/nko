@@ -27,7 +27,7 @@ from donor_base.constants import SubscriptionStatuses
         {"unexpected": "payload"},
     ],
 )
-def test_send_request_returns_none_for_error_payloads(
+def test_send_request_none_for_error_payloads(
     settings: Settings,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
@@ -49,7 +49,7 @@ def test_send_request_returns_none_for_error_payloads(
     assert send_request("5") is None
 
 
-def test_send_payment_email_stops_when_template_is_not_returned(
+def test_send_email_stops_without_template(
     settings: Settings,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
@@ -108,7 +108,7 @@ def test_send_payment_email_handles_send_error(
 
 
 @pytest.mark.django_db
-def test_add_contacts_404_raises_zapros_status_error(
+def test_add_contacts_not_found_error(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     route_zapros_response: Callable[
@@ -133,7 +133,7 @@ def test_add_contacts_404_raises_zapros_status_error(
 
 
 @pytest.mark.django_db
-def test_add_contacts_returns_message_for_204_response(
+def test_add_contacts_no_content_returns_message(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     route_zapros_response: Callable[
@@ -157,7 +157,7 @@ def test_add_contacts_returns_message_for_204_response(
 
 
 @pytest.mark.django_db
-def test_add_contacts_imports_new_donors_in_existing_directory(
+def test_import_new_donors_reuses_directory(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     faker: Faker,
@@ -170,10 +170,8 @@ def test_add_contacts_imports_new_donors_in_existing_directory(
     monkeypatch.chdir(tmp_path)
     (tmp_path / "files").mkdir()
     email = faker.unique.email()
-    csv_data = (
-        "email,email_list_ids\n"
-        f"{email},{SubscriptionStatuses.INACTIVE.group_id}\n"
-    ).encode("utf-8")
+    inactive_group_id = SubscriptionStatuses.INACTIVE.group_id
+    csv_data = (f"email,email_list_ids\n{email},{inactive_group_id}\n").encode()
     file_url = "https://files.test/contacts.csv"
     route_zapros_response(
         HTTPMethod.GET,
