@@ -1,6 +1,7 @@
 """Тесты поведения моделей."""
 
 import pytest
+from faker import Faker
 
 from contacts.models import Contact, Donor
 from donor_base.constants import SubscriptionStatuses
@@ -8,7 +9,7 @@ from forbiddenwords.models import ForbiddenWord
 
 
 @pytest.mark.django_db
-def test_model_string_representations(faker):
+def test_model_string_representations(faker: Faker) -> None:
     """Строковые представления моделей возвращают пользовательские значения."""
     contact = Contact.objects.create_user(
         username="username",
