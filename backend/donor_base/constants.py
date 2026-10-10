@@ -2,8 +2,15 @@ from enum import Enum
 from typing import Self
 
 
+class UnisenderExpectedFilenames(Enum):
+    """Класс ожидаемых наименований колонок файла Юнисендера."""
+
+    EMAIL = "email"
+    EMAIL_STATUS = "email_status"
+
+
 class FailedPaymentStatuses(Enum):
-    """Класс статусов не прошедших платежей."""
+    """Класс статусов непрошедших платежей."""
 
     CANCELLED = "Cancelled"
     DECLINED = "Declined"
