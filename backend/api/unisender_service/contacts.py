@@ -6,7 +6,10 @@ import shutil
 
 from contacts.models import Donor
 
-from .csv_reader import build_bulk_list, _save_file_from_url
+from api.unisender_service.csv_reader import (
+    _save_file_from_url,
+    build_bulk_list,
+)
 
 logger = logging.getLogger(__name__)
 

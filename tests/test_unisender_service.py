@@ -1,6 +1,7 @@
 """Тесты обработки CSV от Unisender."""
 
 from collections.abc import Callable
+from functools import partial
 from http import HTTPMethod, HTTPStatus
 from pathlib import Path
 from typing import Any
@@ -29,7 +30,12 @@ from donor_base.constants import (
 )
 
 
+EMAIL_A = "a_@mail.ru"
+EMAIL_B = "b_@mail.ru"
+
+
 # ================= has_missing_columns ==================
+
 
 def test_has_missing_columns_none() -> None:
     """Тест на отсутствие колонок - None."""
@@ -87,15 +93,15 @@ def test_has_duplicate_emails_empty_list() -> None:
 
 def test_has_duplicate_emails_single_email() -> None:
     """Тест на один адрес."""
-    assert has_duplicate_emails(["a_@mail.ru"]) is False
+    assert has_duplicate_emails([EMAIL_A]) is False
 
 
 def test_has_duplicate_emails_unique_emails() -> None:
     """Тест на несколько адресов без дублей."""
     assert (
         has_duplicate_emails([
-            "a_@mail.ru",
-            "b_@mail.ru",
+            EMAIL_A,
+            EMAIL_B,
         ])
         is False
     )
@@ -105,20 +111,20 @@ def test_has_duplicate_emails_two_same() -> None:
     """Тест на несколько адресов с дублями."""
     assert (
         has_duplicate_emails([
-            "a_@mail.ru",
-            "a_@mail.ru",
+            EMAIL_A,
+            EMAIL_A,
         ])
         is True
     )
 
 
-def test_has_duplicate_emails_three_with_duplicate() -> None:
+def test_has_duplicate_emails_with_duplicate() -> None:
     """Тест на несколько адресов с дублями и без."""
     assert (
         has_duplicate_emails([
-            "a_@mail.ru",
-            "b_@mail.ru",
-            "a_@mail.ru",
+            EMAIL_A,
+            EMAIL_B,
+            EMAIL_A,
         ])
         is True
     )
@@ -127,79 +133,87 @@ def test_has_duplicate_emails_three_with_duplicate() -> None:
 # ==================== get_new_emails ====================
 
 
-def test_get_new_emails_returns_empty_for_empty_input(db: object) -> None:
+def test_get_new_emails_empty_input(db: object) -> None:
     """Тест пустого ответа из БД при пустом запросе."""
     assert get_new_emails([]) == set()
 
 
-def testget_new_emails_returns_empty_when_all_exists(db: object) -> None:
+def test_get_new_emails_all_exists(db: object) -> None:
     """Тест пустого ответа при совпадении всех адресов с существующими."""
     Donor.objects.create(
-        email="a_@mail.ru",
+        email=EMAIL_A,
         subscription=SubscriptionStatuses.ACTIVE.capitalized,
     )
-    assert get_new_emails(["a_@mail.ru"]) == set()
+    assert get_new_emails([EMAIL_A]) == set()
 
 
 def test_get_new_emails_returns_all_when_db_empty(db: object) -> None:
     """Тест ответа со всеми адресами из входа, если их нет в БД."""
-    emails = ["a_@mail.ru", "b_@mail.ru"]
+    emails = [EMAIL_A, EMAIL_B]
     assert get_new_emails(emails) == set(emails)
 
 
 def test_get_new_emails_returns_excludes_existing(db: object) -> None:
     """Тест исключения адресов из создания, если уже присутствуют в базе."""
     Donor.objects.create(
-        email="a_@mail.ru",
+        email=EMAIL_A,
         subscription=SubscriptionStatuses.ACTIVE.capitalized,
     )
-    assert get_new_emails(["a_@mail.ru", "b_@mail.ru"]) == {"b_@mail.ru"}
+    assert get_new_emails([EMAIL_A, EMAIL_B]) == {EMAIL_B}
 
 
 # ==================== build_bulk_list ===================
 
 
+def _create_csv(tmp_path: Path, csv_content: str) -> Path:
+    """Создаёт CSV-файл."""
+    path = tmp_path / "data.csv"
+    path.write_text(csv_content, encoding="utf-8")
+    return path
+
+
 @pytest.fixture
 def csv_file(tmp_path: Path) -> Callable[[str], Path]:
     """Фабрика csv."""
-
-    def _create(content: str) -> Path:
-        path = tmp_path / "data.csv"
-        path.write_text(content, encoding="utf-8")
-        return path
-
-    return _create
+    return partial(_create_csv, tmp_path)
 
 
 @pytest.fixture
 def header() -> str:
     """Шапка csv на основании UnisenderExpectedFilenames."""
+    email_field = UnisenderExpectedFilenames.EMAIL.value
+    status_field = UnisenderExpectedFilenames.EMAIL_STATUS.value
+    return f"{email_field},{status_field}"
+
+
+@pytest.fixture
+def bulk_list_data(faker: Faker) -> tuple[str, str, str, str]:
+    """Данные для теста маппинга."""
     return (
-        f"{UnisenderExpectedFilenames.EMAIL.value},"
-        f"{UnisenderExpectedFilenames.EMAIL_STATUS.value}"
+        SubscriptionStatuses.ACTIVE.group_id,
+        SubscriptionStatuses.INACTIVE.group_id,
+        faker.unique.email(),
+        faker.unique.email(),
     )
 
 
-def test_build_bulk_list_maps_group_ids_to_subscriptions(
+def test_build_bulk_list_maps_group_ids(
     db: object,
     csv_file: Callable[[str], Path],
     header: str,
-    faker: Faker,
+    bulk_list_data: tuple[str, str, str, str],
 ) -> None:
     """Тест маппинга group_id из CSV в capitalized статус."""
-    active_id = SubscriptionStatuses.ACTIVE.group_id
-    inactive_id = SubscriptionStatuses.INACTIVE.group_id
-    email_active = faker.unique.email()
-    email_inactive = faker.unique.email()
+    active_id, inactive_id, email_active, email_inactive = bulk_list_data
 
     path = csv_file(
         f"{header}\n"
         f"{email_active},{active_id}\n"
         f"{email_inactive},{inactive_id}\n",
     )
-    result = build_bulk_list(path)
+    donors = build_bulk_list(path)
 
-    by_email = {donor.email: donor for donor in result}
+    by_email = {donor.email: donor for donor in donors}
     assert by_email[email_active].subscription == (
         SubscriptionStatuses.ACTIVE.capitalized
     )
@@ -208,12 +222,12 @@ def test_build_bulk_list_maps_group_ids_to_subscriptions(
     )
 
 
-def test_build_bulk_list_raises_on_missing_columns(
+def test_build_bulk_list_missing_columns(
     db: object,
     csv_file: Callable[[str], Path],
 ) -> None:
     """Тест вылета с ValueError, если нет ожидаемых колонок."""
-    path = csv_file("someth1ng,w1ld\na_@mail.ru,5\n")
+    path = csv_file("someth1ng,w1ld\nEMAIL_A,5\n")
 
     with pytest.raises(ValueError, match="шапка не соответствует ожидаемой"):
         build_bulk_list(path)
@@ -235,7 +249,7 @@ def test_build_bulk_list_raises_on_duplicates(
         build_bulk_list(path)
 
 
-def test_build_bulk_list_returns_empty_for_header_only(
+def test_build_bulk_list_header_only(
     db: object,
     csv_file: Callable[[str], Path],
     header: str,
