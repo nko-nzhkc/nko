@@ -3,6 +3,7 @@
 import logging
 import pathlib
 from collections import Counter
+from collections.abc import Sequence
 from csv import DictReader
 from http import HTTPMethod, HTTPStatus
 
@@ -55,7 +56,7 @@ def has_duplicate_emails(emails: list[str]) -> bool:
     return False
 
 
-def has_missing_columns(fieldnames: list[str] | None) -> bool:
+def has_missing_columns(fieldnames: Sequence[str] | None) -> bool:
     """Проверяет шапку файла от Юнисендера."""
     if not fieldnames:
         logger.warning(
@@ -85,13 +86,16 @@ def build_bulk_list(file_path: pathlib.Path) -> list[Donor]:
                 "шапка не соответствует ожидаемой.",
             )
         rows = list(reader)
-        emails = [row[UnisenderExpectedFilenames.EMAIL.value] for row in rows]
+        raw_emails = [
+            row[UnisenderExpectedFilenames.EMAIL.value]
+            for row in rows
+        ]
 
-        if has_duplicate_emails(emails):
+        if has_duplicate_emails(raw_emails):
             raise ValueError(
                 "Ошибка при обработке исходного файла: дубли email.",
             )
-        emails = get_new_emails(emails)
+        clean_emails = get_new_emails(raw_emails)
 
         return [
             Donor(
@@ -101,5 +105,5 @@ def build_bulk_list(file_path: pathlib.Path) -> list[Donor]:
                 ),
             )
             for row in rows
-            if row[UnisenderExpectedFilenames.EMAIL.value] in emails
+            if row[UnisenderExpectedFilenames.EMAIL.value] in clean_emails
         ]
