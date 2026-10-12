@@ -43,24 +43,33 @@ def test_has_missing_columns_empty_list() -> None:
 
 def test_has_missing_columns_all_present() -> None:
     """Тест на совпадение шапки с ожидаемым."""
-    assert has_missing_columns([
-        UnisenderExpectedFilenames.EMAIL.value,
-        UnisenderExpectedFilenames.EMAIL_STATUS.value,
-    ]) is False
+    assert (
+        has_missing_columns([
+            UnisenderExpectedFilenames.EMAIL.value,
+            UnisenderExpectedFilenames.EMAIL_STATUS.value,
+        ])
+        is False
+    )
 
 
 def test_has_missing_columns_only_email() -> None:
     """Тест на отсутствие колонки статуса."""
-    assert has_missing_columns([
-        UnisenderExpectedFilenames.EMAIL.value,
-    ]) is True
+    assert (
+        has_missing_columns([
+            UnisenderExpectedFilenames.EMAIL.value,
+        ])
+        is True
+    )
 
 
 def test_has_missing_columns_only_email_status() -> None:
     """Тест на отсутствие колонки адреса."""
-    assert has_missing_columns([
-        UnisenderExpectedFilenames.EMAIL_STATUS.value,
-    ]) is True
+    assert (
+        has_missing_columns([
+            UnisenderExpectedFilenames.EMAIL_STATUS.value,
+        ])
+        is True
+    )
 
 
 def test_has_missing_columns_wrong_columns() -> None:
@@ -82,30 +91,40 @@ def test_has_duplicate_emails_single_email() -> None:
 
 def test_has_duplicate_emails_unique_emails() -> None:
     """Тест на несколько адресов без дублей."""
-    assert has_duplicate_emails([
-        "a_@mail.ru",
-        "b_@mail.ru",
-    ]) is False
+    assert (
+        has_duplicate_emails([
+            "a_@mail.ru",
+            "b_@mail.ru",
+        ])
+        is False
+    )
 
 
 def test_has_duplicate_emails_two_same() -> None:
     """Тест на несколько адресов с дублями."""
-    assert has_duplicate_emails([
-        "a_@mail.ru",
-        "a_@mail.ru",
-    ]) is True
+    assert (
+        has_duplicate_emails([
+            "a_@mail.ru",
+            "a_@mail.ru",
+        ])
+        is True
+    )
 
 
 def test_has_duplicate_emails_three_with_duplicate() -> None:
     """Тест на несколько адресов с дублями и без."""
-    assert has_duplicate_emails([
-        "a_@mail.ru",
-        "b_@mail.ru",
-        "a_@mail.ru",
-    ]) is True
+    assert (
+        has_duplicate_emails([
+            "a_@mail.ru",
+            "b_@mail.ru",
+            "a_@mail.ru",
+        ])
+        is True
+    )
 
 
 # ==================== get_new_emails ====================
+
 
 def test_get_new_emails_returns_empty_for_empty_input(db: object) -> None:
     """Тест пустого ответа из БД при пустом запросе."""
@@ -138,6 +157,7 @@ def test_get_new_emails_returns_excludes_existing(db: object) -> None:
 
 # ==================== build_bulk_list ===================
 
+
 @pytest.fixture
 def csv_file(tmp_path: Path) -> Callable[[str], Path]:
     """Фабрика csv."""
@@ -145,6 +165,7 @@ def csv_file(tmp_path: Path) -> Callable[[str], Path]:
         path = tmp_path / "data.csv"
         path.write_text(content, encoding="utf-8")
         return path
+
     return _create
 
 
@@ -206,11 +227,7 @@ def test_build_bulk_list_raises_on_duplicates(
     email = faker.unique.email()
     active_id = SubscriptionStatuses.ACTIVE.group_id
 
-    path = csv_file(
-        f"{header}\n"
-        f"{email},{active_id}\n"
-        f"{email},{active_id}\n",
-    )
+    path = csv_file(f"{header}\n{email},{active_id}\n{email},{active_id}\n")
 
     with pytest.raises(ValueError, match="дубли email"):
         build_bulk_list(path)
@@ -230,6 +247,7 @@ def test_build_bulk_list_returns_empty_for_header_only(
 # ========================================================
 # ===== Тесты ошибок Unisender и скачивания CSV.""" ======
 # ========================================================
+
 
 @pytest.mark.parametrize(
     "response_data",
