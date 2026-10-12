@@ -161,6 +161,7 @@ def test_get_new_emails_returns_excludes_existing(db: object) -> None:
 @pytest.fixture
 def csv_file(tmp_path: Path) -> Callable[[str], Path]:
     """Фабрика csv."""
+
     def _create(content: str) -> Path:
         path = tmp_path / "data.csv"
         path.write_text(content, encoding="utf-8")
