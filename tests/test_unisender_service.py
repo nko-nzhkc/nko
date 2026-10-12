@@ -79,6 +79,7 @@ def test_has_missing_columns_wrong_columns() -> None:
 
 # ================= has_duplicate_emails =================
 
+
 def test_has_duplicate_emails_empty_list() -> None:
     """Тест на пустой лист."""
     assert has_duplicate_emails([]) is False
