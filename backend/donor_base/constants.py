@@ -6,7 +6,7 @@ class UnisenderExpectedFilenames(Enum):
     """Класс ожидаемых наименований колонок файла Юнисендера."""
 
     EMAIL = "email"
-    EMAIL_STATUS = "email_status"
+    EMAIL_STATUS = "email_list_ids"
 
 
 class FailedPaymentStatuses(Enum):

@@ -48,15 +48,6 @@ def donors(db: object, faker: Faker) -> list[Donor]:
     ]
 
 
-@pytest.fixture(autouse=True)
-def api_request() -> Iterator[MagicMock]:
-    """Изолирует отправку запроса во внешний Unisender."""
-    with patch(
-        "donor_base.unisender_client.Client._api_request",
-    ) as request:
-        yield request
-
-
 @pytest.mark.parametrize(
     "error",
     [
@@ -75,10 +66,11 @@ def api_request() -> Iterator[MagicMock]:
     ids=["base", "connection", "timeout", "read", "write", "400", "503"],
 )
 def test_retries_zapros_errors(
-    error: zapros.ZaprosError,
     donors: list[Donor],
     api_request: MagicMock,
     task_retry: MagicMock,
+    *,
+    error: zapros.ZaprosError,
 ) -> None:
     """Любое исключение zapros приводит к Celery retry."""
     api_request.side_effect = error
@@ -98,11 +90,12 @@ def test_retries_zapros_errors(
     ],
 )
 def test_executes_use_case(
-    selection: str,
-    overwrite_lists: int,
     donors: list[Donor],
     api_request: MagicMock,
     task_retry: MagicMock,
+    *,
+    selection: str,
+    overwrite_lists: int,
 ) -> None:
     """Задача передаёт клиент из DI и выполняет сценарий."""
     if selection == "all":
@@ -162,10 +155,11 @@ def test_retry_configuration() -> None:
     ],
 )
 def test_import_failure_does_not_send_email(
-    error: Exception,
-    expected_exception: type[Exception],
     donors: list[Donor],
     api_request: MagicMock,
+    *,
+    error: Exception,
+    expected_exception: type[Exception],
 ) -> None:
     """Retry или ошибка импорта не запускает следующую задачу."""
     api_request.side_effect = error
