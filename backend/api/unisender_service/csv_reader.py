@@ -27,7 +27,7 @@ def _save_file_from_url(file_url: str, file_path: pathlib.Path) -> str | None:
     return None
 
 
-def _get_new_emails(emails: list[str]) -> set[str]:
+def get_new_emails(emails: list[str]) -> set[str]:
     """Формирует недублированный список email по данным БД.
 
     По списку email из файла от Юнисендера получаем список совпадающих.
@@ -42,7 +42,7 @@ def _get_new_emails(emails: list[str]) -> set[str]:
     return set(emails) - existing_emails
 
 
-def _has_duplicate_emails(emails: list[str]) -> bool:
+def has_duplicate_emails(emails: list[str]) -> bool:
     """Проверяет наличие дублей email в файле от Юнисендера."""
     counts = Counter(emails)
     duplicates = {email for email, count in counts.items() if count > 1}
@@ -55,7 +55,7 @@ def _has_duplicate_emails(emails: list[str]) -> bool:
     return False
 
 
-def _has_missing_columns(fieldnames: list[str] | None) -> bool:
+def has_missing_columns(fieldnames: list[str] | None) -> bool:
     """Проверяет шапку файла от Юнисендера."""
     if not fieldnames:
         logger.warning(
@@ -75,11 +75,11 @@ def _has_missing_columns(fieldnames: list[str] | None) -> bool:
     return bool(missing_fieldnames)
 
 
-def _build_bulk_list(file_path: pathlib.Path) -> list[Donor]:
+def build_bulk_list(file_path: pathlib.Path) -> list[Donor]:
     """Формирует список новых доноров из CSV-файла."""
     with file_path.open(encoding="utf-8") as csv_file:
         reader = DictReader(csv_file, delimiter=",")
-        if _has_missing_columns(reader.fieldnames):
+        if has_missing_columns(reader.fieldnames):
             raise ValueError(
                 "Ошибка при обработке исходного файла: "
                 "шапка не соответствует ожидаемой.",
@@ -87,11 +87,11 @@ def _build_bulk_list(file_path: pathlib.Path) -> list[Donor]:
         rows = list(reader)
         emails = [row[UnisenderExpectedFilenames.EMAIL.value] for row in rows]
 
-        if _has_duplicate_emails(emails):
+        if has_duplicate_emails(emails):
             raise ValueError(
                 "Ошибка при обработке исходного файла: дубли email.",
             )
-        emails = _get_new_emails(emails)
+        emails = get_new_emails(emails)
 
         return [
             Donor(

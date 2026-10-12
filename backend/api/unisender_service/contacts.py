@@ -6,7 +6,7 @@ import shutil
 
 from contacts.models import Donor
 
-from .csv_reader import _build_bulk_list, _save_file_from_url
+from .csv_reader import build_bulk_list, _save_file_from_url
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def add_contacts(file_url: str) -> str | None:
         logger.info(error_message)
         return error_message
 
-    bulk_list = _build_bulk_list(file_path)
+    bulk_list = build_bulk_list(file_path)
     Donor.objects.bulk_create(bulk_list)
 
     try:
