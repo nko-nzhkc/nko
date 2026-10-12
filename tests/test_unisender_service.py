@@ -227,7 +227,7 @@ def test_build_bulk_list_missing_columns(
     csv_file: Callable[[str], Path],
 ) -> None:
     """Тест вылета с ValueError, если нет ожидаемых колонок."""
-    path = csv_file("someth1ng,w1ld\nEMAIL_A,5\n")
+    path = csv_file(f"someth1ng,w1ld\n{EMAIL_A},5\n")
 
     with pytest.raises(ValueError, match="шапка не соответствует ожидаемой"):
         build_bulk_list(path)
