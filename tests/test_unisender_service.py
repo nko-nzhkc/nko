@@ -187,31 +187,31 @@ def header() -> str:
 
 
 @pytest.fixture
-def bulk_list_data(faker: Faker) -> tuple[str, str, str, str]:
-    """Данные для теста маппинга."""
-    return (
-        SubscriptionStatuses.ACTIVE.group_id,
-        SubscriptionStatuses.INACTIVE.group_id,
-        faker.unique.email(),
-        faker.unique.email(),
-    )
-
-
-def test_build_bulk_list_maps_group_ids(
+def bulk_list_result(
     db: object,
     csv_file: Callable[[str], Path],
     header: str,
-    bulk_list_data: tuple[str, str, str, str],
-) -> None:
-    """Тест маппинга group_id из CSV в capitalized статус."""
-    active_id, inactive_id, email_active, email_inactive = bulk_list_data
+    faker: Faker,
+) -> tuple[list[Donor], str, str]:
+    """Создаёт CSV и возвращает результат build_bulk_list."""
+    active_id = SubscriptionStatuses.ACTIVE.group_id
+    inactive_id = SubscriptionStatuses.INACTIVE.group_id
+    email_active = faker.unique.email()
+    email_inactive = faker.unique.email()
 
     path = csv_file(
         f"{header}\n"
         f"{email_active},{active_id}\n"
         f"{email_inactive},{inactive_id}\n",
     )
-    donors = build_bulk_list(path)
+    return build_bulk_list(path), email_active, email_inactive
+
+
+def test_build_bulk_list_maps_group_ids(
+    bulk_list_result: tuple[list[Donor], str, str],
+) -> None:
+    """Тест маппинга group_id из CSV в capitalized статус."""
+    donors, email_active, email_inactive = bulk_list_result
 
     by_email = {donor.email: donor for donor in donors}
     assert by_email[email_active].subscription == (
