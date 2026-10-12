@@ -87,8 +87,7 @@ def build_bulk_list(file_path: pathlib.Path) -> list[Donor]:
             )
         rows = list(reader)
         raw_emails = [
-            row[UnisenderExpectedFilenames.EMAIL.value]
-            for row in rows
+            row[UnisenderExpectedFilenames.EMAIL.value] for row in rows
         ]
 
         if has_duplicate_emails(raw_emails):
