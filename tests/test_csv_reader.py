@@ -30,7 +30,7 @@ EMAIL_B: Final = "b_@mail.ru"
         (
             [
                 UnisenderExpectedFilenames.EMAIL.value,
-                UnisenderExpectedFilenames.EMAIL_STATUS.value
+                UnisenderExpectedFilenames.EMAIL_STATUS.value,
             ],
             False,
         ),
