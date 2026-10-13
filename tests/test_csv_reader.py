@@ -23,7 +23,7 @@ EMAIL_B: Final = "b_@mail.ru"
 
 
 @pytest.mark.parametrize(
-    ("fieldnames", "expected"),
+    ("fieldnames", "expected_has_missing"),
     [
         (None, True),
         ([], True),
@@ -49,7 +49,7 @@ def test_has_missing_columns(
 
 
 @pytest.mark.parametrize(
-    ("emails", "expected"),
+    ("emails", "expected_has_double"),
     [
         ([], False),
         ([EMAIL_A], False),
@@ -61,10 +61,10 @@ def test_has_missing_columns(
 def test_hes_duplicate_emails(
     *,
     emails: list[str],
-    expected: bool,
+    expected_has_double: bool,
 ) -> None:
     """Тест проверки дублей по email в файле Юнисендера."""
-    assert has_duplicate_emails(emails) is expected
+    assert has_duplicate_emails(emails) is expected_has_double
 
 
 @pytest.mark.django_db
@@ -133,6 +133,7 @@ def csv_with_two_statuses(
     return path, email_active, email_inactive
 
 
+@pytest.mark.django_db
 def test_build_bulk_list_maps_group_ids(
     csv_with_two_statuses: tuple[Path, str, str],
 ) -> None:
