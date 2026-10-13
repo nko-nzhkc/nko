@@ -30,8 +30,8 @@ from donor_base.constants import (
 )
 
 
-EMAIL_A = "a_@mail.ru"
-EMAIL_B = "b_@mail.ru"
+EMAIL_A: Final = "a_@mail.ru"
+EMAIL_B: Final = "b_@mail.ru"
 
 
 # ================= has_missing_columns ==================
