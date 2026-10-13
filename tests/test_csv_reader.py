@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from functools import partial
 from pathlib import Path
+from typing import Final
 
 import pytest
 from faker import Faker
@@ -17,8 +18,8 @@ from donor_base.constants import (
     UnisenderExpectedFilenames,
 )
 
-EMAIL_A = "a_@mail.ru"
-EMAIL_B = "b_@mail.ru"
+EMAIL_A: Final = "a_@mail.ru"
+EMAIL_B: Final = "b_@mail.ru"
 
 
 @pytest.mark.parametrize(
@@ -29,7 +30,8 @@ EMAIL_B = "b_@mail.ru"
         (
             [
                 UnisenderExpectedFilenames.EMAIL.value,
-                UnisenderExpectedFilenames.EMAIL_STATUS.value],
+                UnisenderExpectedFilenames.EMAIL_STATUS.value
+            ],
             False,
         ),
         ([UnisenderExpectedFilenames.EMAIL.value], True),
