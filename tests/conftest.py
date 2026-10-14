@@ -23,7 +23,10 @@ from zapros.mock import Mock, MockMiddleware, MockRouter
 from api import donor_service
 from contacts.models import Donor
 from donor_base import di
-from donor_base.constants import SubscriptionStatuses
+from donor_base.constants import (
+    SubscriptionStatuses,
+    UnisenderExpectedFilenames,
+)
 
 
 def _add_zapros_response(
@@ -216,3 +219,11 @@ def mixplat_payload(faker: Faker) -> dict[str, str | None]:
         "currency": "RUB",
         "recurrent_id": None,
     }
+
+
+@pytest.fixture
+def header() -> str:
+    """Шапка csv на основании UnisenderExpectedFilenames."""
+    email_field = UnisenderExpectedFilenames.EMAIL.value
+    status_field = UnisenderExpectedFilenames.EMAIL_STATUS.value
+    return f"{email_field},{status_field}"
