@@ -2,14 +2,17 @@
 
 import logging
 from datetime import datetime
-from typing import Any, TypedDict, TypeGuard
+from typing import Any, NotRequired, TypedDict, TypeGuard
 from zoneinfo import ZoneInfo
 
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from api.donor_service import create_or_update_donor
+from api.donor_service import (
+    create_or_update_donor,
+    has_email_marketing_consent,
+)
 from donor_base.constants import (
     DATE_FORMAT,
     DEFAULT_TZ,
@@ -39,6 +42,7 @@ class MixplatRequestData(TypedDict):
     date_processed: str
     currency: str
     recurrent_id: str | None
+    merchant_fields: NotRequired[object]
 
 
 class MixPlatPayload(TypedDict):
@@ -118,6 +122,9 @@ def _process_mixplat_request(data: MixplatRequestData) -> None:
         donor_email=mixplat_obj_dict["email"],
         payment_status=mixplat_obj_dict["status"],
         subscription=subscription,
+        email_marketing_consent=has_email_marketing_consent(
+            data.get("merchant_fields"),
+        ),
     )
     MixPlat.objects.create(**mixplat_obj_dict)
 

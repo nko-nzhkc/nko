@@ -26,10 +26,14 @@ OVERWRITE_LISTS_KEY = "overwrite_lists"
 
 
 def _create_donors(faker: Faker, count: int) -> list[Donor]:
-    """Создаёт count реальных доноров с активной подпиской."""
+    """Создаёт count активных доноров с согласием на рассылку."""
     subscription = SubscriptionStatuses.ACTIVE.capitalized
     return Donor.objects.bulk_create([
-        Donor(email=faker.unique.email(), subscription=subscription)
+        Donor(
+            email=faker.unique.email(),
+            subscription=subscription,
+            email_marketing_consent=True,
+        )
         for _ in range(count)
     ])
 

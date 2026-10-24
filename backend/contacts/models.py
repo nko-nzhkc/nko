@@ -71,6 +71,11 @@ class Donor(models.Model):
         verbose_name="Счётчик неудачных платежей",
     )
 
+    email_marketing_consent = models.BooleanField(
+        default=False,
+        verbose_name="Согласие на email-рассылку",
+    )
+
     class Meta:
         verbose_name = "Донор"
         verbose_name_plural = "Доноры"

@@ -11,7 +11,7 @@ import pytest
 import zapros
 from django.conf import settings
 from django.db import transaction
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 from faker import Faker
 from zapros.matchers import path
 from zapros.mock import Mock, MockMiddleware, MockRouter
@@ -279,7 +279,12 @@ def test_ad_donor_saves_donor_and_publishes_task(
     email, subscription = ad_donor_data
 
     with django_capture_on_commit_callbacks(execute=True):
-        ad_donor(email, subscription, update=False)
+        ad_donor(
+            email,
+            subscription,
+            update=False,
+            email_marketing_consent=True,
+        )
 
     donor = Donor.objects.get(email=email)
 
@@ -305,6 +310,7 @@ def test_ad_donor_uses_overwrite_lists_for_update(
         email=email,
         subscription=subscription,
         count_declined=2,
+        email_marketing_consent=True,
     )
 
     with django_capture_on_commit_callbacks(execute=True):
@@ -341,7 +347,12 @@ def test_ad_donor_skips_task_before_commit(
         with django_capture_on_commit_callbacks(
             execute=False,
         ) as callbacks:
-            ad_donor(email, subscription, update=False)
+            ad_donor(
+                email,
+                subscription,
+                update=False,
+                email_marketing_consent=True,
+            )
             signature.apply_async.assert_not_called()
 
         assert len(callbacks) == 1
@@ -387,6 +398,7 @@ def test_ad_donor_publishes_email_after_unisender(
             subscription,
             update=False,
             send_email=True,
+            email_marketing_consent=True,
         )
 
         chain_factory.return_value.apply_async.assert_not_called()
@@ -415,7 +427,7 @@ def test_ad_donor_publishes_email_after_unisender(
     email_signature.apply_async.assert_not_called()
 
 
-class SendPaymentEmailTest(UnisenderFixtureMixin, SimpleTestCase):
+class SendPaymentEmailTest(UnisenderFixtureMixin, TestCase):
     """send_payment_email: сначала getTemplate, затем sendEmail."""
 
     @override
@@ -456,6 +468,12 @@ class SendPaymentEmailTest(UnisenderFixtureMixin, SimpleTestCase):
             HTTPMethod.POST,
             settings.URL_SEND_EMAIL,
             {RESULT_FIELD: {"email_id": self.fake.random_int(min=1)}},
+        )
+
+        Donor.objects.create(
+            email=self.email,
+            subscription=SubscriptionStatuses.ACTIVE.capitalized,
+            email_marketing_consent=True,
         )
 
     def test_sends_email_using_fetched_template(self) -> None:

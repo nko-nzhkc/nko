@@ -147,18 +147,38 @@ def test_handling_rejects_invalid_structure(
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("sync_task", "email_task", "chain_factory")
+@pytest.mark.usefixtures(
+    "sync_task",
+    "email_task",
+    "chain_factory",
+    "cloudpayments_settings",
+)
+@pytest.mark.parametrize(
+    ("metadata", "expected_consent"),
+    [
+        (None, False),
+        ({"email_marketing_consent": True}, True),
+        ('{"email_marketing_consent": true}', True),
+    ],
+    ids=["without-metadata", "object-consent", "json-consent"],
+)
 def test_handling_maps_payment_and_updates_donor(
     cloudpayment_payload: dict[str, Any],
     drf_json_request: Callable[[Any], Request],
-    cloudpayments_settings: None,
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
         Mock,
     ],
     django_capture_on_commit_callbacks: Any,
+    *,
+    metadata: object,
+    expected_consent: bool,
 ) -> None:
-    """Mapping webhook использует реальный lookup и обновляет Donor."""
+    """Metadata сохраняется у донора и не мешает сохранить платёж."""
+    model = cloudpayment_payload[CLOUDPAYMENTS_MODEL_KEY][0]
+    if metadata is not None:
+        model["JsonData"] = metadata
+
     subscription_route = route_zapros_response(
         HTTPMethod.POST,
         CLOUDPAYMENTS_FIND_URL,
@@ -172,8 +192,10 @@ def test_handling_maps_payment_and_updates_donor(
         payment_data = handling_cloudpayment_data(
             drf_json_request(cloudpayment_payload),
         )
+        serializer = CloudpaymentsSerializer(data=payment_data)
+        assert serializer.is_valid(), serializer.errors
+        payment = serializer.save()
 
-    model = cloudpayment_payload[CLOUDPAYMENTS_MODEL_KEY][0]
     assert payment_data == snapshot(
         {
             "email": model["Email"],
@@ -188,9 +210,15 @@ def test_handling_maps_payment_and_updates_donor(
             "currency": model["Currency"],
         },
     )
-    assert Donor.objects.get(email=model["Email"]).subscription == (
-        SubscriptionStatuses.ACTIVE.capitalized
+    assert Donor.objects.values_list(
+        "subscription",
+        "email_marketing_consent",
+    ).get(email=model["Email"]) == (
+        SubscriptionStatuses.ACTIVE.capitalized,
+        expected_consent,
     )
+    assert CloudPayment.objects.get(pk=payment.pk).email == model["Email"]
+    assert payment.donat == model["Amount"]
     subscription_route.assert_called_once()
 
 

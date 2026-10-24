@@ -9,7 +9,10 @@ import zapros
 from django.conf import settings
 from rest_framework.request import Request
 
-from api.donor_service import create_or_update_donor
+from api.donor_service import (
+    create_or_update_donor,
+    has_email_marketing_consent,
+)
 from donor_base import http_client
 from donor_base.constants import SubscriptionStatuses
 
@@ -64,6 +67,9 @@ def handling_cloudpayment_data(request: Request) -> dict[str, Any]:
             donor_email=data["email"],
             payment_status=data["status"],
             subscription=subscription,
+            email_marketing_consent=has_email_marketing_consent(
+                model.get("JsonData"),
+            ),
         )
         return data
     logger.info("Неправильная структура request.data")

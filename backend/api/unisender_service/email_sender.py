@@ -4,6 +4,7 @@ from typing import Any
 from django.conf import settings
 
 from donor_base import http_client
+from contacts.models import Donor
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,12 @@ def _extract_unisender_result(
 
 def send_payment_email(email: str, list_id: int | str) -> None:
     """Получение шаблона и отправка письма донору."""
+    if not Donor.objects.filter(
+        email=email,
+        email_marketing_consent=True,
+    ).exists():
+        return
+
     template_data = {
         "format": "json",
         "api_key": settings.UNISENDER_API_KEY,
@@ -40,6 +47,13 @@ def send_payment_email(email: str, list_id: int | str) -> None:
     )
     if template is None:
         return
+
+    if not Donor.objects.filter(
+        email=email,
+        email_marketing_consent=True,
+    ).exists():
+        return
+
     data = {
         "format": "json",
         "api_key": settings.UNISENDER_API_KEY,

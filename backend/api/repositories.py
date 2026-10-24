@@ -13,7 +13,7 @@ class DonorRepository:
         donor_ids: Iterable[int] | None = None,
     ) -> Iterator[tuple[str, str]]:
         """Возвращает email и статус подписки каждого донора."""
-        queryset = Donor.objects.all()
+        queryset = Donor.objects.filter(email_marketing_consent=True)
 
         if donor_ids is not None:
             queryset = queryset.filter(pk__in=donor_ids)

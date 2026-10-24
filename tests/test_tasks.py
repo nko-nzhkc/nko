@@ -35,11 +35,12 @@ def task_retry() -> Iterator[MagicMock]:
 
 @pytest.fixture
 def donors(db: object, faker: Faker) -> list[Donor]:
-    """Создаёт доноров для выполнения реального сценария."""
+    """Создаёт разрешённые контакты для реального сценария."""
     return [
         Donor.objects.create(
             email=faker.unique.email(),
             subscription=subscription,
+            email_marketing_consent=True,
         )
         for subscription in (
             SubscriptionStatuses.ACTIVE.capitalized,
@@ -89,6 +90,7 @@ def test_retries_zapros_errors(
         ("selected", 0),
     ],
 )
+@pytest.mark.parametrize("consent_cleared", [False, True])
 def test_executes_use_case(
     donors: list[Donor],
     api_request: MagicMock,
@@ -96,17 +98,27 @@ def test_executes_use_case(
     *,
     selection: str,
     overwrite_lists: int,
+    consent_cleared: bool,
 ) -> None:
-    """Задача передаёт клиент из DI и выполняет сценарий."""
-    if selection == "all":
-        selected = donors
-        send_users_to_unisender.run()
-    else:
-        selected = donors[:1]
-        send_users_to_unisender.run(
-            donor_ids=[selected[0].pk],
-            overwrite_lists=overwrite_lists,
-        )
+    """Задача отправляет только контакты с текущим согласием."""
+    selected = donors if selection == "all" else donors[:1]
+    donor_ids = None if selection == "all" else [donor.pk for donor in selected]
+
+    if consent_cleared:
+        Donor.objects.filter(
+            pk__in=[donor.pk for donor in selected],
+        ).update(email_marketing_consent=False)
+
+    send_users_to_unisender.run(
+        donor_ids=donor_ids,
+        overwrite_lists=overwrite_lists,
+    )
+
+    task_retry.assert_not_called()
+
+    if consent_cleared:
+        api_request.assert_not_called()
+        return
 
     api_request.assert_called_once()
     method, payload = api_request.call_args.args
@@ -121,8 +133,6 @@ def test_executes_use_case(
         ]
         for donor in selected
     )
-
-    task_retry.assert_not_called()
 
 
 def test_does_not_retry_unrelated_error(

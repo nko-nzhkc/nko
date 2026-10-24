@@ -68,12 +68,14 @@ def _create_donor(
     email: str | None = None,
     subscription: str = SubscriptionStatuses.ACTIVE.capitalized,
     count_declined: int = 0,
+    email_marketing_consent: bool = False,
 ) -> Donor:
     donor_email = faker.unique.email() if email is None else email
     return Donor.objects.create(
         email=donor_email,
         subscription=subscription,
         count_declined=count_declined,
+        email_marketing_consent=email_marketing_consent,
     )
 
 

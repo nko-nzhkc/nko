@@ -1,5 +1,6 @@
 """Модуль бизнес логики доноров."""
 
+import json
 import logging
 from functools import partial
 
@@ -23,12 +24,27 @@ from donor_base.subscriptions import get_group_by_capitalized
 logger = logging.getLogger(__name__)
 
 
+def has_email_marketing_consent(metadata: object) -> bool:
+    """Проверяет явное согласие в дополнительных данных платежа."""
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except json.JSONDecodeError:
+            return False
+
+    if not isinstance(metadata, dict):
+        return False
+
+    return metadata.get("email_marketing_consent") is True
+
+
 def ad_donor(
     donor_email: str,
     subscription: str,
     update: bool,  # ruff: ignore[boolean-type-hint-positional-argument]
     *,
     send_email: bool = False,
+    email_marketing_consent: bool = False,
 ) -> None:
     """Сохраняет донора и планирует импорт, затем при необходимости письмо."""
     donor_obj, _ = Donor.objects.update_or_create(
@@ -37,7 +53,15 @@ def ad_donor(
             "subscription": subscription,
             "count_declined": 0,
         },
+        create_defaults={
+            "subscription": subscription,
+            "count_declined": 0,
+            "email_marketing_consent": email_marketing_consent is True,
+        },
     )
+
+    if not donor_obj.email_marketing_consent:
+        return
 
     workflow = send_users_to_unisender.si(
         donor_ids=[donor_obj.pk],
@@ -100,13 +124,19 @@ def _handle_active_subscription(donor_email: str, donor: Donor) -> None:
         )
 
 
-def _create_new_donor(donor_email: str, subscription: str) -> None:
+def _create_new_donor(
+    donor_email: str,
+    subscription: str,
+    *,
+    email_marketing_consent: bool = False,
+) -> None:
     """Создает нового донора в зависимости от статуса подписки."""
     if subscription == SubscriptionStatuses.INACTIVE.capitalized:
         ad_donor(
             donor_email,
             SubscriptionStatuses.INACTIVE.capitalized,
             update=False,
+            email_marketing_consent=email_marketing_consent,
         )
         logger.info(
             "Создан Донор %s со статусом %s",
@@ -119,6 +149,7 @@ def _create_new_donor(donor_email: str, subscription: str) -> None:
             SubscriptionStatuses.ACTIVE.capitalized,
             update=False,
             send_email=True,
+            email_marketing_consent=email_marketing_consent,
         )
         logger.info(
             "Создан Донор %s со статусом %s",
@@ -144,13 +175,41 @@ def _update_existing_donor(
         )
 
 
+@transaction.atomic
 def create_or_update_donor(
     donor_email: str,
     payment_status: str,
     subscription: str,
+    *,
+    email_marketing_consent: bool = False,
 ) -> None:
     """Создаем нового донора или обновляем статус существующего."""
-    if Donor.objects.filter(email=donor_email).exists():
-        _update_existing_donor(donor_email, payment_status, subscription)
-    else:
-        _create_new_donor(donor_email, subscription)
+    donor = Donor.objects.select_for_update().filter(email=donor_email).first()
+    if donor is None:
+        _create_new_donor(
+            donor_email,
+            subscription,
+            email_marketing_consent=email_marketing_consent,
+        )
+        return
+
+    consent_granted = (
+        email_marketing_consent is True and not donor.email_marketing_consent
+    )
+    if consent_granted:
+        donor.email_marketing_consent = True
+        donor.save(update_fields=["email_marketing_consent"])
+
+    previous_subscription = donor.subscription
+    _update_existing_donor(donor_email, payment_status, subscription)
+
+    if consent_granted:
+        donor.refresh_from_db(fields=["subscription"])
+        if donor.subscription == previous_subscription:
+            workflow = send_users_to_unisender.si(
+                donor_ids=[donor.pk],
+                overwrite_lists=1,
+            )
+            transaction.on_commit(
+                partial(workflow.apply_async),
+            )

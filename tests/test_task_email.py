@@ -8,17 +8,23 @@ from pytest_django import Settings
 from zapros.mock import Mock
 
 from api.tasks import send_payment_email_task
+from contacts.models import Donor
 
 
 def test_email_task_uses_unisender_service(
     settings: Settings,
+    make_donor: Callable[..., Donor],
     route_zapros_response: Callable[
         [HTTPMethod, str, zapros.Response],
         Mock,
     ],
     parse_zapros_form: Callable[[zapros.Request], dict[str, str]],
 ) -> None:
-    """Celery task отправляет запросы через реальный zapros.Client."""
+    """Разрешённому донору задача отправляет прежние HTTP-запросы."""
+    donor = make_donor(
+        email="donor@example.org",
+        email_marketing_consent=True,
+    )
     settings.UNISENDER_API_KEY = "test-api-key"
     settings.TEMPLATE_ID = "42"
     settings.DEFAULT_FROM_EMAIL = "noreply@example.org"
@@ -46,7 +52,7 @@ def test_email_task_uses_unisender_service(
         ),
     )
 
-    send_payment_email_task.run("donor@example.org", 5)
+    send_payment_email_task.run(donor.email, 5)
 
     assert parse_zapros_form(template_route.calls[0]) == {
         "format": "json",
@@ -56,7 +62,7 @@ def test_email_task_uses_unisender_service(
     assert parse_zapros_form(email_route.calls[0]) == {
         "format": "json",
         "api_key": "test-api-key",
-        "email": "donor@example.org",
+        "email": donor.email,
         "sender_email": "noreply@example.org",
         "sender_name": "Test project",
         "subject": "Thank you",

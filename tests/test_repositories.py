@@ -10,12 +10,14 @@ from donor_base.constants import SubscriptionStatuses
 
 @pytest.fixture
 def donors(db: object, faker: Faker) -> list[Donor]:
-    """Создаёт доноров с разными статусами подписки."""
+    """Создаёт доноров с разными статусами и разрешениями."""
     return [
         Donor.objects.create(
             email=faker.unique.email(),
             subscription=subscription,
+            email_marketing_consent=consent,
         )
+        for consent in (True, False)
         for subscription in (
             SubscriptionStatuses.ACTIVE.capitalized,
             SubscriptionStatuses.INACTIVE.capitalized,
@@ -25,19 +27,25 @@ def donors(db: object, faker: Faker) -> list[Donor]:
 
 @pytest.mark.parametrize(
     "selection",
-    ["all", "selected", "empty", "missing"],
+    ["all", "selected", "blocked", "empty", "missing"],
 )
 def test_get_donors_returns_use_case_data(
     donors: list[Donor],
     selection: str,
 ) -> None:
-    """Репозиторий возвращает данные, нужные use case."""
+    """Полная и адресная выборки возвращают только разрешённые контакты."""
+    allowed = [donor for donor in donors if donor.email_marketing_consent]
+    blocked = [donor for donor in donors if not donor.email_marketing_consent]
+
     if selection == "all":
         donor_ids = None
-        expected_donors = donors
+        expected_donors = allowed
     elif selection == "selected":
-        donor_ids = [donors[0].pk]
-        expected_donors = donors[:1]
+        donor_ids = [allowed[0].pk, blocked[0].pk]
+        expected_donors = allowed[:1]
+    elif selection == "blocked":
+        donor_ids = [donor.pk for donor in blocked]
+        expected_donors = []
     elif selection == "empty":
         donor_ids = []
         expected_donors = []
@@ -48,6 +56,7 @@ def test_get_donors_returns_use_case_data(
     actual = list(
         DonorRepository().get_donors(donor_ids=donor_ids),
     )
-    expected = [(donor.email, donor.subscription) for donor in expected_donors]
 
-    assert sorted(actual) == sorted(expected)
+    assert sorted(actual) == sorted(
+        (donor.email, donor.subscription) for donor in expected_donors
+    )

@@ -31,6 +31,7 @@ def test_string_to_date_returns_aware_datetime() -> None:
 
 @pytest.mark.usefixtures("sync_task", "email_task", "chain_factory")
 @pytest.mark.django_db
+@pytest.mark.parametrize("consent", [False, True])
 @pytest.mark.parametrize(
     ("recurrent_id", "expected_subscription"),
     [
@@ -45,20 +46,26 @@ def test_mixplat_webhook_saves_payment_and_donor(
     *,
     recurrent_id: str | None,
     expected_subscription: str,
+    consent: bool,
 ) -> None:
-    """Webhook action сохраняет платёж и обновляет реального донора."""
-    mixplat_payload["recurrent_id"] = recurrent_id
+    """Платёж сохраняется независимо от согласия и рекуррентности."""
+    payload: dict[str, Any] = dict(mixplat_payload)
+    payload["recurrent_id"] = recurrent_id
+    if consent:
+        payload["merchant_fields"] = {
+            "email_marketing_consent": True,
+        }
 
     with django_capture_on_commit_callbacks(execute=True):
         response = api_client.post(
             "/api/mixplat/payment_status/",
-            data=mixplat_payload,
+            data=payload,
             format="json",
         )
 
     _assert_successful_mixplat_response(response)
 
-    email = mixplat_payload["user_email"]
+    email = payload["user_email"]
     payment = MixPlat.objects.get(email=email)
     donor = Donor.objects.get(email=email)
 
@@ -66,6 +73,7 @@ def test_mixplat_webhook_saves_payment_and_donor(
     assert payment.custom_donat == MIXPLAT_CUSTOM_DONAT
     assert payment.payment_operator == "mixplat"
     assert donor.subscription == expected_subscription
+    assert donor.email_marketing_consent is consent
 
 
 @pytest.mark.django_db
